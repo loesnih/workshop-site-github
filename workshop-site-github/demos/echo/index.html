@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e8eeeb">
+<title>Эхо — исследовательская станция</title>
+<style>
+  :root{color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#183b40;background:#e8eeeb}
+  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+  button{font:inherit;color:inherit;cursor:pointer;min-height:48px;border:1px solid #b1c6c5;border-radius:14px;background:#f5faf7;padding:12px 18px;font-weight:650;touch-action:manipulation}
+  button:active{background:#c4e8df}button:focus-visible{outline:3px solid #e38444;outline-offset:3px}
+  button:disabled{opacity:.45;cursor:wait}[hidden]{display:none!important}
+  #view{position:fixed;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;outline:none}
+  .hud{position:fixed;z-index:2;pointer-events:none;inset:0}
+  header{position:absolute;top:max(16px,env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .title{padding:12px 16px;border:1px solid #ffffffa6;background:#f1f7f0e8;border-radius:16px;box-shadow:0 6px 24px #14363c12}
+  .eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:750;color:#527473}
+  h1{font-size:clamp(18px,3.2vw,26px);line-height:1.2;margin:4px 0 0;font-weight:650;letter-spacing:-.5px}
+  #rooms{pointer-events:auto;box-shadow:0 6px 24px #14363c12;background:#f1f7f0f5}
+  #hint{position:absolute;bottom:max(68px,calc(env(safe-area-inset-bottom) + 58px));left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);padding:13px 18px;border:1px solid #ffffff99;border-radius:15px;background:#f1f7f0ed;font-size:13px;line-height:1.55;text-align:center;transition:opacity .4s}
+  #hint.hide{opacity:0}
+  footer{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));display:flex;justify-content:space-between;gap:12px;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:#edfdfa;text-shadow:0 1px 5px #15393d}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#63e0ca;margin-right:7px;box-shadow:0 0 9px #45b6a5}
+  #toast{position:absolute;bottom:66px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);padding:12px 18px;border-radius:14px;background:#173c40ed;color:#fff;text-align:center;font-size:14px}
+  #fade{position:fixed;inset:0;background:#d9e8e4;opacity:0;pointer-events:none;z-index:3;transition:opacity .14s}
+  #fade.on{opacity:1}
+  dialog{border:1px solid #b5c8c6;border-radius:24px;padding:24px;color:#183b40;background:#f2f7f1;width:min(420px,calc(100% - 32px));max-height:calc(100% - 32px);box-shadow:0 25px 100px #102e3b55;overflow:auto}
+  dialog::backdrop{background:#122f3e70;backdrop-filter:blur(5px)}
+  dialog h2{font-size:26px;font-weight:650;letter-spacing:-.7px;margin:8px 0 18px}
+  dialog p{font-size:17px;line-height:1.65;margin:0 0 22px;white-space:pre-line}
+  .choices{display:grid;gap:10px;margin-bottom:18px}.choices button{text-align:left;display:flex;align-items:center;gap:16px;padding:18px}
+  .choices span{font-size:12px;color:#5c8483}.choices button[aria-current="true"]{border-color:#309888;background:#dceee6}
+  #close{width:100%;background:#1e514f;color:#fff;border-color:#1e514f}
+  #loading{position:fixed;z-index:8;inset:0;display:grid;place-items:center;background:#e8eeeb;padding:24px;text-align:center}
+  #loading .card{max-width:420px}#loading h2{font-weight:600;font-size:28px;letter-spacing:-1px}
+  #loading p{line-height:1.7;color:#4a6f70}.orbit{margin:auto;width:60px;height:60px;border:1px solid #94b5ae;border-top:3px solid #208e80;border-radius:50%;animation:spin 1.4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(max-width:420px){header{gap:8px}.title{padding:10px 12px}.eyebrow{font-size:9px;letter-spacing:1.4px}#rooms{padding:12px}footer{font-size:9px;letter-spacing:.7px}}
+  @media(max-height:460px){header{top:max(8px,env(safe-area-inset-top))}.title{padding:8px 12px}h1{font-size:18px}#hint{bottom:42px;padding:8px 14px;font-size:12px}footer{bottom:10px}dialog{padding:18px}dialog h2{margin:4px 0 12px}.choices{gap:8px;margin-bottom:12px}.choices button{padding:12px}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+<script src="../../assets/demo-nav.js" defer></script>
+</head>
+<body>
+<div id="view"></div>
+<div class="hud">
+  <header><div class="title"><div class="eyebrow">Станция «Эхо» / сектор <span id="sector">01</span></div><h1 id="roomName">Жилой отсек</h1></div><button id="rooms" disabled>Комнаты <span aria-hidden="true">☰</span></button></header>
+  <div id="hint">Проведите пальцем для осмотра.<br>Коснитесь выделенного предмета для взаимодействия.</div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <footer><span><i class="dot"></i>Системы в норме</span><span>Исследовательская станция</span></footer>
+</div>
+<div id="fade"></div>
+<dialog id="modal" aria-labelledby="modalTitle">
+  <div class="eyebrow" id="modalTag">Навигация по станции</div>
+  <h2 id="modalTitle">Комнаты</h2>
+  <div class="choices" id="choices"><button data-room="living"><span>01</span>Жилой отсек</button><button data-room="lab"><span>02</span>Лаборатория</button></div>
+  <p id="message" hidden></p><button id="close">Закрыть</button>
+</dialog>
+<div id="loading"><div class="card"><div class="orbit" id="spinner"></div><h2 id="loadTitle">Исследовательская станция</h2><p id="loadText">Подключение к станции «Эхо»…</p><button id="retry" hidden>Повторить загрузку</button><noscript><p>Для запуска станции включите JavaScript в браузере.</p></noscript></div></div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  let renderer, failed = false;
+  function fail(text) {
+    failed = true;
+    if (renderer) renderer.setAnimationLoop(null);
+    if ($('modal').open) $('modal').close();
+    $('spinner').hidden = true; $('loadTitle').textContent = 'Станция недоступна';
+    $('loadText').textContent = text; $('retry').hidden = false; $('loading').hidden = false;
+    $('rooms').disabled = true;
+  }
+  $('retry').onclick = () => location.reload();
+  async function boot() {
+    let THREE, timer;
+    try {
+      // Единственная внешняя зависимость. Без дополнительных модулей.
+      THREE = await Promise.race([
+        import('../../assets/vendor/three-0.160.1.module.js'),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), 20000); })
+      ]);
+    } catch (e) {
+      fail('Не удалось загрузить 3D-библиотеку. Проверьте, что папка assets загружена на сервер целиком, затем повторите загрузку.');
+      return;
+    } finally { clearTimeout(timer); }
+    try { init(THREE); }
+    catch (e) { console.error(e); fail('Не удалось запустить WebGL. Откройте файл в современном браузере с поддержкой аппаратного ускорения.'); }
+  }
+  function init(T) {
+    const scene = new T.Scene(); scene.background = new T.Color('#b2c5cb');
+    const camera = new T.PerspectiveCamera(64, 1, .06, 110);
+    camera.rotation.order = 'YXZ';
+    renderer = new T.WebGLRenderer({antialias:true, powerPreference:'low-power'});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.outputColorSpace = T.SRGBColorSpace;
+    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.25;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = false;
+    const canvas = renderer.domElement;
+    canvas.tabIndex = 0; canvas.setAttribute('aria-label','3D-станция. Перетаскивайте для осмотра. Стрелки на клавиатуре поворачивают камеру.');
+    $('view').appendChild(canvas);
+    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); fail('Графический контекст потерян. Закройте лишние вкладки и повторите загрузку станции.'); });
+
+    const material = (color, extra={}) => new T.MeshStandardMaterial({color,roughness:.75,metalness:.08,...extra});
+    const M = {
+      wall:material('#d8e0d9'), panel:material('#f0eee2'), floor:material('#748b8d'),
+      dark:material('#253e48',{metalness:.55,roughness:.4}), trim:material('#547476',{metalness:.45}),
+      white:material('#f3e8cc'), fabric:material('#548c89',{roughness:1}), pillow:material('#e9dfc6',{roughness:1}),
+      orange:material('#c8773e'), teal:material('#2f8f85'),
+      glow:material('#80edda',{emissive:'#42d8bc',emissiveIntensity:.65}),
+      warm:material('#ffe3a1',{emissive:'#ffc36b',emissiveIntensity:1.4}),
+      black:material('#162f38'), glass:material('#9ee4e1',{transparent:true,opacity:.16,roughness:.18,metalness:.15,depthWrite:false,side:T.DoubleSide})
+    };
+    const geo = {box:new T.BoxGeometry(1,1,1), cylinder:new T.CylinderGeometry(1,1,1,24), sphere:new T.SphereGeometry(1,16,12)};
+    function group(parent,x=0,y=0,z=0,action) { const g=new T.Group();g.position.set(x,y,z);if(action)g.userData.action=action;parent.add(g);return g; }
+    function mesh(parent,g,m,x,y,z,sx=1,sy=1,sz=1) {const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=!m.transparent;o.receiveShadow=true;parent.add(o);return o;}
+    const box=(p,x,y,z,w,h,d,m)=>mesh(p,geo.box,m,x,y,z,w,h,d);
+    const cyl=(p,x,y,z,r,h,m)=>mesh(p,geo.cylinder,m,x,y,z,r,h,r);
+    function label(p,text,x,y,z,w=.9,h=.22,rotation=0) {
+      const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');
+      ctx.fillStyle='#203f46';ctx.fillRect(0,0,512,128);ctx.fillStyle='#83dfcd';ctx.fillRect(0,0,10,128);
+      ctx.font='600 35px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e8f5e7';ctx.fillText(text,262,66,470);
+      const map=new T.CanvasTexture(c);map.colorSpace=T.SRGBColorSpace;
+      const o=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map}));o.position.set(x,y,z);o.rotation.y=rotation;p.add(o);return o;
+    }
+    const markers=[];
+    function marker(p,text,x,y,z,room) {
+      const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');
+      ctx.fillStyle='#173c43';ctx.beginPath();ctx.roundRect(2,2,508,124,30);ctx.fill();
+      ctx.strokeStyle='#91eed7';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#91eed7';ctx.beginPath();ctx.arc(49,64,12,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#f5faf0';ctx.font='600 38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,285,66,408);
+      const map=new T.CanvasTexture(c);map.colorSpace=T.SRGBColorSpace;
+      const s=new T.Sprite(new T.SpriteMaterial({map,depthTest:true,depthWrite:false}));s.position.set(x,y,z);s.scale.set(.98,.245,1);s.userData.room=room;p.add(s);markers.push(s);
+    }
+    function legs(p,w,d,h) {for(const x of [-w/2+.12,w/2-.12])for(const z of [-d/2+.12,d/2-.12])box(p,x,h/2,z,.12,h,.12,M.dark);}
+    function table(p,x,z,w,d) {const g=group(p,x,0,z);legs(g,w,d,1);box(g,0,1.04,0,w,.14,d,M.white);box(g,0,.92,0,w-.1,.1,d-.06,M.dark);return g;}
+    function cabinet(p,x,z,w=1.4,h=2.5,action) {
+      const g=group(p,x,0,z,action);box(g,0,.1,0,w-.15,.2,.66,M.dark);box(g,0,h/2+.15,0,w,h-.3,.78,M.trim);
+      for(const side of [-1,1]){box(g,side*w/4,h/2+.15,.414,w/2-.045,h-.4,.08,M.panel);box(g,side*.085,1.3,.48,.04,.42,.045,M.dark);}
+      for(let i=0;i<4;i++)box(g,0,h-.35-i*.07,.463,w*.6,.025,.01,M.trim);
+      return g;
+    }
+    // Два соседних помещения. Общая стена имеет реальный дверной проём.
+    const living=group(scene), lab=group(scene,8.2);
+    function shell(p,isLiving) {
+      box(p,0,-.13,0,8.2,.26,7,M.floor);box(p,0,3.62,0,8.2,.24,7,M.wall);
+      box(p,0,1.75,3.5,8.2,3.5,.24,M.wall);
+      box(p,isLiving?-4.1:4.1,1.75,0,.24,3.5,7,M.wall);
+      if(isLiving) {
+        box(p,-3.75,1.75,-3.5,.7,3.5,.24,M.wall);box(p,1.75,1.75,-3.5,4.7,3.5,.24,M.wall);
+        box(p,-2, .625,-3.5,2.8,1.25,.24,M.wall);box(p,-2,3.175,-3.5,2.8,.65,.24,M.wall);
+      } else box(p,0,1.75,-3.5,8.2,3.5,.24,M.wall);
+      for(let x=-3.5;x<=3.5;x++)for(let z=-3;z<=3;z++)box(p,x,.008,z,.973,.016,.973,M.floor);
+      for(const z of [-3.34,3.34]) {
+        box(p,0,.17,z,8,.22,.09,M.dark);box(p,0,3.28,z,8,.13,.13,M.trim);
+        for(const x of [-3.9,-.45,3.9])box(p,x,1.74,z,.1,2.95,.1,M.trim);
+      }
+      const outer=isLiving?-3.94:3.94;
+      box(p,outer,.17,0,.08,.22,6.8,M.dark);box(p,outer,3.28,0,.12,.13,6.8,M.trim);
+      for(const z of [-2.2,0,2.2])box(p,outer,1.7,z,.12,3.15,.1,M.trim);
+      for(const x of [-2.6,2.6]){box(p,x,3.47,0,.38,.08,4.8,M.dark);box(p,x,3.42,0,.23,.03,4.6,M.warm);}
+      for(const z of [-2.1,1.7])box(p,0,3.43,z,7.9,.13,.14,M.trim);
+      const light=new T.PointLight('#fff2d7',45,10,2);light.position.set(0,3.05,.7);p.add(light);
+    }
+    shell(living,true);shell(lab,false);
+    box(scene,4.1,1.75,-2.15,.24,3.5,2.7,M.wall);box(scene,4.1,1.75,2.15,.24,3.5,2.7,M.wall);
+    box(scene,4.1,3.05,0,.24,.9,1.6,M.wall);
+    const door=group(scene,4.1,0,0,'door');
+    for(const z of [-.84,.84])box(door,0,1.34,z,.4,2.68,.14,M.dark);
+    box(door,0,2.64,0,.4,.16,1.8,M.dark);box(door,0,.035,0,.6,.07,1.72,M.trim);
+    box(door,0,1.32,0,.12,2.5,1.56,M.panel);box(door,0,1.32,0,.14,2.45,.035,M.dark);
+    for(const side of [-1,1]) {
+      box(door,side*.09,1.35,.59,.045,.46,.07,M.glow);
+      box(door,side*.09,2.35,0,.035,.065,1.2,M.glow);
+    }
+    label(door,'ЛАБОРАТОРИЯ →',-.085,1.95,0,1.35,.28,-Math.PI/2);
+    label(door,'ЖИЛОЙ ОТСЕК →',.085,1.95,0,1.35,.28,Math.PI/2);
+    marker(door,'Перейти',-.25,1.25,0,'living');marker(door,'Перейти',.25,1.25,0,'lab');
+
+    // Окно: открытый проём, толстая рама и объёмный пейзаж за станцией.
+    for(const x of [-3.44,-.56])box(living,x,2.05,-3.43,.15,1.76,.35,M.dark);
+    for(const y of [1.2,2.9])box(living,-2,y,-3.43,3.03,.14,.35,M.dark);
+    box(living,-2,1.14,-3.24,3.15,.1,.65,M.white);
+    box(living,-2,2.05,-3.51,2.8,1.65,.025,M.glass);
+    const terrain=material('#8d8290',{flatShading:true});
+    box(scene,-3,-.28,-30,90,.2,60,material('#9c8a91'));
+    const rockGeo=new T.IcosahedronGeometry(1,0);
+    for(let i=0;i<22;i++) {
+      const x=-24+i*2.4,z=-13-(i%5)*3.6,h=1.8+(Math.sin(i*7.3)+1)*2.6;
+      const r=mesh(scene,rockGeo,terrain,x,h*.36-1,z,2.8,h,2.5);r.rotation.set(i*.17,i*1.3,.2);
+    }
+    const planet=mesh(scene,geo.sphere,material('#ebc7ac'),-9,11,-43,5,5,5);planet.castShadow=false;
+    const ring=mesh(scene,new T.TorusGeometry(7,.13,6,64),M.white,-9,11,-43);ring.rotation.set(1.05,.2,-.35);ring.castShadow=false;
+    label(living,'ЭХО / ПОВЕРХНОСТЬ',-2,1.45,-3.3,1.35,.18);
+
+    // Жилой отсек: кровать, стол, кресло, шкаф и настольная лампа.
+    const bed=group(living,-2.6,0,-.7);legs(bed,1.6,2.8,.32);
+    box(bed,0,.4,0,1.72,.26,2.92,M.dark);box(bed,0,.61,0,1.58,.2,2.76,M.pillow);
+    box(bed,0,.745,.36,1.6,.09,1.92,M.fabric);box(bed,0,.75,-.97,1.15,.18,.55,M.white);
+    box(bed,0,.94,-1.47,1.77,.9,.13,M.trim);box(bed,0,.46,1.47,1.77,.38,.1,M.panel);
+    for(const x of [-.58,.58])box(bed,x,.8,.36,.035,.012,1.87,M.white);
+    const desk=table(living,.7,-2.7,2.7,1);
+    box(desk,-.93,.6,0,.55,.76,.8,M.panel);
+    for(const y of [.42,.68,.94])box(desk,-.93,y,.413,.35,.025,.025,M.trim);
+    const notebook=box(desk,-.2,1.14,.03,.65,.06,.4,M.orange);notebook.rotation.y=-.15;
+    cyl(desk,-.65,1.23,.22,.085,.22,M.white);
+    const lamp=group(desk,.85,1.11,.12,'lamp');
+    cyl(lamp,0,.035,0,.2,.07,M.dark);cyl(lamp,0,.31,0,.035,.5,M.trim);
+    const shade=mesh(lamp,new T.ConeGeometry(.25,.24,24,1,true),M.orange,0,.61,0);shade.material=material('#d4884e',{side:T.DoubleSide});
+    const bulbMat=M.warm.clone();const bulb=mesh(lamp,geo.sphere,bulbMat,0,.51,0,.095,.065,.095);
+    const lampLight=new T.PointLight('#ffd28d',5,3,2);lampLight.position.set(0,.48,.04);lamp.add(lampLight);
+    marker(lamp,'Свет',0,.91,.04,'living');
+    const chair=group(living,.55,0,-1.35);cyl(chair,0,.07,0,.36,.12,M.dark);cyl(chair,0,.32,0,.065,.4,M.trim);
+    box(chair,0,.56,0,.68,.16,.68,M.fabric);box(chair,0,.97,.3,.7,.68,.14,M.fabric);
+    for(const x of [-.4,.4]){box(chair,x,.72,.05,.055,.34,.055,M.dark);box(chair,x,.9,.01,.12,.09,.58,M.white);}
+    const wardrobe=cabinet(living,-2.7,2.3,1.85,2.65,'wardrobe');wardrobe.rotation.y=2.1;
+    label(wardrobe,'СКАФАНДР / 01',0,1.93,.462,1.4,.24);marker(wardrobe,'Шкаф',0,1.08,.52,'living');
+    label(living,'01 / ЖИЛОЙ ОТСЕК',.7,2.65,-3.36,2,.3);
+    box(living,2.7,.03,.2,1.15,.045,3.4,M.trim);
+    for(let i=0;i<4;i++)box(living,2.7,.058,-.85+i*.7,.56,.008,.045,M.white);
+
+    // Лаборатория: рабочий стол, терминал и прозрачная капсула.
+    const bench=table(lab,.1,-1.55,3.6,1.25);
+    box(bench,0,.62,0,.12,.6,.9,M.trim);box(bench,0,.24,0,3.25,.1,.8,M.trim);
+    const terminal=group(bench,-1,1.11,-.12,'terminal');
+    box(terminal,0,.035,.05,.76,.07,.52,M.dark);box(terminal,0,.26,-.12,.12,.4,.12,M.trim);
+    const monitor=group(terminal,0,.52,-.09);monitor.rotation.x=-.12;
+    box(monitor,0,0,0,.93,.62,.14,M.dark);
+    label(monitor,'ОБРАЗЕЦ / 074',0,.13,.078,.8,.2);
+    for(let i=0;i<7;i++)box(monitor,-.32+i*.105,-.15,.08,.06,.07+(i%3)*.04,.01,M.glow);
+    for(let i=0;i<6;i++)box(terminal,-.26+i*.105,.077,.17,.07,.018,.12,M.trim);
+    marker(terminal,'Запись',0,.99,.03,'lab');
+    const capsule=group(bench,.93,1.11,0,'capsule');
+    cyl(capsule,0,.075,0,.49,.15,M.dark);cyl(capsule,0,.18,0,.43,.06,M.glow);
+    const sampleMat=material('#4ad9be',{emissive:'#27bca7',emissiveIntensity:.55,roughness:.3,metalness:.2,flatShading:true});
+    const signalMat=sampleMat.clone();
+    cyl(capsule,0,.29,0,.17,.16,M.trim);
+    const crystal=group(capsule,0,.37,0);
+    const crystalGeo=new T.OctahedronGeometry(1,0);
+    mesh(crystal,crystalGeo,sampleMat,0,.24,0,.19,.3,.18);
+    const shard=mesh(crystal,crystalGeo,sampleMat,.15,.16,.02,.11,.2,.11);shard.rotation.z=-.45;
+    const shard2=mesh(crystal,crystalGeo,sampleMat,-.14,.14,-.02,.09,.19,.12);shard2.rotation.z=.5;
+    const tube=mesh(capsule,new T.CylinderGeometry(.415,.415,.93,32,1,true),M.glass,0,.675,0);tube.castShadow=false;
+    cyl(capsule,0,1.18,0,.49,.12,M.dark);cyl(capsule,0,1.1,0,.43,.045,M.glow);
+    for(const x of [-.33,.33])for(const z of [-.26,.26])cyl(capsule,x,.665,z,.025,.99,M.trim);
+    marker(capsule,'Образец',0,1.49,0,'lab');
+    const sampleLight=new T.PointLight('#4ad9be',2,2.6,2);sampleLight.position.set(.93,1.7,0);bench.add(sampleLight);
+    const tech1=cabinet(lab,-2.7,-2.85,1.35,2.6),tech2=cabinet(lab,2.85,-2.85,1.35,2.6);
+    label(tech1,'ПИТАНИЕ',0,1.97,.462,.98,.22);label(tech2,'ХРАНЕНИЕ',0,1.97,.462,.98,.22);
+    for(const g of [tech1,tech2])for(let i=0;i<3;i++)box(g,-.4+i*.17,1.63,.47,.08,.065,.02,M.glow);
+    const signal=group(lab,2.85,2.91,-3.18);box(signal,0,0,0,.44,.45,.13,M.dark);
+    const beacon=mesh(signal,geo.sphere,signalMat,0,0,.12,.14,.14,.13);
+    label(lab,'02 / ЛАБОРАТОРИЯ',.9,2.95,-3.36,2.3,.3);
+    label(lab,'КАПСУЛА АКТИВНА',2.85,3.25,-3.35,1.3,.17);
+    box(lab,2.65,.028,.9,1.3,.04,2.2,M.trim);
+    for(let i=0;i<4;i++)box(lab,2.65,.053,.15+i*.45,.55,.008,.04,M.white);
+    const tray=group(bench,-.12,1.15,.1);box(tray,0,0,0,.4,.06,.38,M.trim);
+    for(let i=0;i<3;i++)cyl(tray,-.12+i*.12,.12,0,.037,.2,M.white);
+
+    scene.add(new T.HemisphereLight('#e3f5f1','#708088',2.1));
+    const sun=new T.DirectionalLight('#fff1dc',2.6);sun.position.set(-3,8,3);sun.target.position.set(4,0,-1);
+    sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-11;sun.shadow.camera.right=11;
+    sun.shadow.camera.top=7;sun.shadow.camera.bottom=-7;sun.shadow.camera.near=.5;sun.shadow.camera.far=25;
+    sun.shadow.normalBias=.035;sun.shadow.bias=-.0002;scene.add(sun,sun.target);
+    // Свет потолочных панелей не блокирует основной свет внутри закрытых комнат.
+    for(const room of [living,lab])room.children.filter(o=>o.isMesh && o.position.y>3.4).forEach(o=>o.castShadow=false);
+    renderer.shadowMap.needsUpdate=true;
+
+    const state={lampOn:true,orange:false};
+    const rooms={living:{name:'Жилой отсек',sector:'01',position:[.15,1.65,1.55],yaw:.04,pitch:-.06},lab:{name:'Лаборатория',sector:'02',position:[8.2,1.65,1.65],yaw:0,pitch:-.045}};
+    let current='living',yaw=0,pitch=0,gesture=null,transitioning=false,toastTimer;
+    const modal=$('modal'), raycaster=new T.Raycaster(), pointer=new T.Vector2();
+    let pickables=[];
+    function updateCamera(){camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();}
+    function cancelGesture(){const old=gesture;gesture=null;if(old && canvas.hasPointerCapture(old.id))canvas.releasePointerCapture(old.id);}
+    function applyRoom(id){
+      current=id;const r=rooms[id];camera.position.set(...r.position);yaw=r.yaw;pitch=r.pitch;updateCamera();
+      $('roomName').textContent=r.name;$('sector').textContent=r.sector;
+      markers.forEach(s=>s.visible=s.userData.room===id);
+      pickables=[];scene.traverseVisible(o=>{if(o.isMesh || o.isSprite)pickables.push(o);});scene.updateMatrixWorld(true);
+      document.querySelectorAll('[data-room]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.room===id)));
+    }
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function enterRoom(id){
+      if(!rooms[id] || transitioning || failed)return;
+      cancelGesture();if(modal.open)modal.close();
+      if(id===current)return;
+      transitioning=true;$('fade').classList.add('on');$('toast').hidden=true;
+      setTimeout(()=>{applyRoom(id);$('fade').classList.remove('on');setTimeout(()=>transitioning=false,reduced?0:150);},reduced?0:150);
+    }
+    function notify(text){clearTimeout(toastTimer);$('hint').classList.add('hide');$('toast').textContent=text;$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,2400);}
+    function openModal(title,text){
+      cancelGesture();$('modalTitle').textContent=title;$('modalTag').textContent=text?'Архив станции':'Навигация по станции';
+      $('message').textContent=text || '';$('message').hidden=!text;$('choices').hidden=!!text;modal.showModal();
+    }
+    $('rooms').onclick=()=>{if(!transitioning)openModal('Комнаты');};
+    $('close').onclick=()=>modal.close();modal.addEventListener('close',cancelGesture);modal.addEventListener('cancel',cancelGesture);
+    modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left || e.clientX>r.right || e.clientY<r.top || e.clientY>r.bottom)modal.close();}});
+    document.querySelectorAll('[data-room]').forEach(b=>b.onclick=()=>enterRoom(b.dataset.room));
+    function act(action){
+      if(action==='door'){enterRoom(current==='living'?'lab':'living');return;}
+      if(action==='lamp' && current==='living'){
+        state.lampOn=!state.lampOn;lampLight.intensity=state.lampOn?5:0;bulbMat.emissiveIntensity=state.lampOn?1.4:0;
+        bulbMat.color.set(state.lampOn?'#ffe3a1':'#8b958d');notify(state.lampOn?'Настольная лампа включена':'Настольная лампа выключена');
+      }
+      if(action==='wardrobe' && current==='living')openModal('Личный шкаф','Скафандр находится на техническом обслуживании');
+      if(action==='terminal' && current==='lab')openModal('Запись № 074','Образец реагирует на изменение освещения.\nНе отключайте питание капсулы');
+      if(action==='capsule' && current==='lab'){
+        state.orange=!state.orange;const color=state.orange?'#ff9847':'#4ad9be';
+        for(const m of [sampleMat,signalMat]){m.color.set(color);m.emissive.set(color);}
+        sampleLight.color.set(color);notify(state.orange?'Образец: оранжевый спектр':'Образец: бирюзовый спектр');
+      }
+    }
+    function pick(x,y){
+      if(modal.open || transitioning || failed)return;
+      const r=canvas.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);
+      scene.updateMatrixWorld(true);camera.updateMatrixWorld();raycaster.setFromCamera(pointer,camera);
+      // Проверяются ВСЕ видимые поверхности: ближайшая стена или мебель блокирует касание.
+      const hit=raycaster.intersectObjects(pickables,false)[0];if(!hit)return;
+      let o=hit.object;while(o && !o.userData.action)o=o.parent;if(o)act(o.userData.action);
+    }
+    canvas.addEventListener('pointerdown',e=>{
+      if(modal.open || transitioning || failed || (e.pointerType==='mouse' && e.button!==0))return;
+      if(gesture){gesture.cancelled=true;return;}if(!e.isPrimary)return;
+      gesture={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,start:performance.now(),moved:false,cancelled:false};
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove',e=>{
+      const g=gesture;if(!g || g.id!==e.pointerId || g.cancelled || modal.open || transitioning)return;
+      if(Math.hypot(e.clientX-g.x,e.clientY-g.y)>8)g.moved=true;
+      if(g.moved){
+        const speed=.004;const dx=e.clientX-g.lastX,dy=e.clientY-g.lastY;
+        yaw=(yaw+dx*speed)%(Math.PI*2);pitch=T.MathUtils.clamp(pitch+dy*speed,-1.18,1.18);updateCamera();$('hint').classList.add('hide');
+      }
+      g.lastX=e.clientX;g.lastY=e.clientY;
+    });
+    canvas.addEventListener('pointerup',e=>{
+      const g=gesture;if(!g || g.id!==e.pointerId)return;
+      const tap=!g.moved && !g.cancelled && performance.now()-g.start<500 && Math.hypot(e.clientX-g.x,e.clientY-g.y)<=8;
+      cancelGesture();if(tap)pick(e.clientX,e.clientY);
+    });
+    canvas.addEventListener('pointercancel',cancelGesture);canvas.addEventListener('lostpointercapture',cancelGesture);
+    canvas.addEventListener('contextmenu',e=>e.preventDefault());window.addEventListener('blur',cancelGesture);
+    canvas.addEventListener('keydown',e=>{
+      if(modal.open || transitioning)return;const keys=['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];if(!keys.includes(e.key))return;e.preventDefault();
+      yaw+=e.key==='ArrowLeft'?.08:e.key==='ArrowRight'?-.08:0;pitch=T.MathUtils.clamp(pitch+(e.key==='ArrowUp'?.06:e.key==='ArrowDown'?-.06:0),-1.18,1.18);updateCamera();
+    });
+    function resize(){
+      cancelGesture();const w=$('view').clientWidth,h=$('view').clientHeight;
+      renderer.setSize(w,h);camera.aspect=w/h;
+      camera.fov=T.MathUtils.clamp(T.MathUtils.radToDeg(2*Math.atan(Math.tan(T.MathUtils.degToRad(28))/camera.aspect)),64,105);
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);
+    applyRoom('living');resize();renderer.render(scene,camera);
+    $('rooms').disabled=false;$('loading').hidden=true;setTimeout(()=>$('hint').classList.add('hide'),10000);
+    let last=0;
+    renderer.setAnimationLoop(time=>{
+      if(failed || document.hidden || time-last<32)return;last=time;
+      try{renderer.render(scene,camera);}catch(e){console.error(e);fail('Ошибка отрисовки 3D-сцены. Повторите загрузку в браузере с поддержкой WebGL.');}
+    });
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

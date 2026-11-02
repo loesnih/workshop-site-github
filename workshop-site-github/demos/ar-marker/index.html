@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>AR.js · Сундук на карточке</title>
+<style>*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;color:#25463d;background:#eaf0e8}body.running{background:transparent}.panel{position:fixed;z-index:10;left:14px;right:14px;background:#fffffff0;border-radius:20px;padding:16px;max-width:520px;box-shadow:0 4px 28px #0001}header{top:max(14px,env(safe-area-inset-top))}footer{bottom:max(14px,env(safe-area-inset-bottom))}h1{font-size:21px;margin:0 0 8px}p{font-size:13px;line-height:1.5;margin:8px 0}button,.link{display:inline-block;font:inherit;border:0;border-radius:12px;background:#e5ece2;color:#25463d;padding:12px 15px;text-decoration:none;margin:4px 4px 4px 0;cursor:pointer}#start,#open{background:#285946;color:white}button:disabled{opacity:.45;cursor:default}#status{font-size:13px;line-height:1.45}#controls{display:none}body.running #controls{display:block}body.running #intro{display:none}#score{float:right;font-weight:600}.arjs-loader{display:none}</style><script src="../../assets/demo-nav.js" defer></script>
+</head>
+<body><header class="panel"><span id="score" aria-live="polite">Монеты: 0</span><h1>Сундук на карточке</h1><div id="intro"><p>Распечатайте маркер Hiro или покажите его на другом экране. Разместите карточку перед камерой целиком, вместе с белыми полями.</p><a class="link" href="marker.html" target="_blank" rel="noopener">Открыть маркер</a><button id="start">Включить камеру</button><p>Камера работает через HTTPS. Этот пример не требует WebXR или ARCore.</p></div><div id="status" role="status">Готовы к запуску. Разрешите доступ к камере, когда браузер спросит.</div></header><footer class="panel" id="controls"><button id="open" disabled>Найдите маркер</button><button id="reset">Начать заново</button><button id="stop">Выключить камеру</button><p>Держите маркер в кадре. Когда он исчезает, сундук скрывается.</p></footer>
+<script>
+'use strict';
+// Игровая логика отделена от AR: заменяйте сундук и награду через задания агенту.
+const $=s=>document.querySelector(s),status=$('#status'),start=$('#start'),openButton=$('#open');
+let found=false,opened=false,coins=0,scene=null,starting=false,cameraReady=false,watchdog;
+function loadScript(src){return new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src;script.onload=resolve;script.onerror=()=>reject(Error('Не загрузился '+src));document.head.append(script)})}
+function updateButton(){openButton.disabled=!found||opened;openButton.textContent=opened?'Сундук открыт':found?'Открыть сундук':'Найдите маркер'}
+function markerFound(){found=true;updateButton();status.textContent=opened?'Сундук открыт. Монета уже получена.':'Маркер найден! Можно открыть сундук.'}
+function markerLost(){found=false;updateButton();status.textContent='Маркер потерян. Наведите камеру на карточку целиком.'}
+function openChest(){if(!found||opened)return;opened=true;coins++;$('#score').textContent='Монеты: '+coins;$('#lid').setAttribute('animation__open','property: rotation; to: -105 0 0; dur: 650; easing: easeOutCubic');$('#coin').setAttribute('visible',true);updateButton();status.textContent='Вы получили монету! Осмотрите сундук с разных сторон.'}
+function resetGame(){opened=false;coins=0;$('#score').textContent='Монеты: 0';if($('#lid')){$('#lid').removeAttribute('animation__open');$('#lid').setAttribute('rotation','0 0 0');$('#coin').setAttribute('visible',false)}updateButton();status.textContent=found?'Новая игра. Откройте сундук.':'Новая игра. Найдите маркер.'}
+function cameraError(e){clearTimeout(watchdog);status.textContent='Камера не запустилась. Проверьте разрешение камеры в браузере, закройте другие приложения с камерой и перезагрузите страницу.';console.warn('AR camera error',e.detail)}
+addEventListener('camera-init',()=>{cameraReady=true;clearTimeout(watchdog);if(!found)status.textContent='Камера включена. Наведите её на маркер Hiro.'});addEventListener('camera-error',cameraError);
+function stopCamera(){clearTimeout(watchdog);document.querySelectorAll('video').forEach(v=>{v.srcObject?.getTracks().forEach(t=>t.stop())});location.reload()}
+start.addEventListener('click',async()=>{if(starting)return;if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){status.textContent='Откройте эту страницу по HTTPS во внешнем браузере с доступом к камере.';return}starting=true;start.disabled=true;status.textContent='Загрузка AR.js и A-Frame…';try{if(!window.AFRAME)await loadScript('vendor/aframe.min.js');if(!AFRAME.systems.arjs)await loadScript('vendor/aframe-ar.js');scene=document.createElement('a-scene');scene.setAttribute('embedded','');scene.setAttribute('vr-mode-ui','enabled: false');scene.setAttribute('device-orientation-permission-ui','enabled: false');scene.setAttribute('renderer','alpha: true; antialias: true; colorManagement: true');scene.setAttribute('arjs','sourceType: webcam; debugUIEnabled: false; trackingMethod: best; cameraParametersUrl: vendor/camera_para.dat;');
+scene.innerHTML=`
+ <a-entity light="type: ambient; intensity: 1.2"></a-entity>
+ <a-entity light="type: directional; intensity: 1.4" position="1 3 2"></a-entity>
+ <a-marker id="marker" type="pattern" url="vendor/hiro.patt" emitevents="true" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+  <a-entity id="chest" scale="0.85 0.85 0.85">
+   <a-box position="0 0.23 0" width="1.1" height="0.46" depth="0.75" color="#98613c"></a-box>
+   <a-box position="-0.36 0.23 0.004" width="0.09" height="0.47" depth="0.77" color="#d3b16a"></a-box>
+   <a-box position="0.36 0.23 0.004" width="0.09" height="0.47" depth="0.77" color="#d3b16a"></a-box>
+   <a-box position="0 0.467 0" width="0.88" height="0.012" depth="0.57" color="#392d26"></a-box>
+   <!-- Шарнир крышки находится у заднего края сундука. -->
+   <a-entity id="lid" position="0 0.46 -0.375">
+    <a-box position="0 0.09 0.375" width="1.12" height="0.18" depth="0.77" color="#b57b48"></a-box>
+    <a-box position="-0.36 0.09 0.375" width="0.09" height="0.19" depth="0.79" color="#d3b16a"></a-box>
+    <a-box position="0.36 0.09 0.375" width="0.09" height="0.19" depth="0.79" color="#d3b16a"></a-box>
+    <a-box position="0 0.02 0.772" width="0.17" height="0.17" depth="0.035" color="#e1c17b"></a-box>
+   </a-entity>
+   <a-entity id="coin" visible="false" position="0 1.05 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear">
+    <a-cylinder radius="0.19" height="0.045" rotation="90 0 0" color="#ffcf50" segments-radial="32"></a-cylinder>
+    <a-sphere radius="0.045" position="0 0 0.03" scale="1 1 0.25" color="#fff1af"></a-sphere>
+   </a-entity>
+  </a-entity>
+ </a-marker><a-entity camera look-controls="enabled: false" wasd-controls="enabled: false"></a-entity>`;
+scene.querySelector('#marker').addEventListener('markerFound',markerFound);scene.querySelector('#marker').addEventListener('markerLost',markerLost);document.body.classList.add('running');document.body.append(scene);status.textContent='Разрешите доступ к камере. Затем наведите её на карточку Hiro.';watchdog=setTimeout(()=>{if(!cameraReady)status.textContent='Ожидаем камеру. Проверьте разрешение в браузере. Если разрешение выдано, но видео нет — перезагрузите страницу.'},15000);
+}catch(e){starting=false;start.disabled=false;status.textContent='Ошибка запуска: '+e.message+'. Проверьте, что загрузили всю папку проекта.'}});
+openButton.addEventListener('click',openChest);$('#reset').addEventListener('click',resetGame);$('#stop').addEventListener('click',stopCamera);
+</script></body></html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101f29">
+<title>Тихая орбита — исследовательская станция</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101f29;color:#edf8f6;font:15px system-ui,sans-serif;overflow:hidden}button{font:inherit;color:inherit;cursor:pointer;min-height:48px;border:1px solid #73918b65;background:#203640;border-radius:14px;padding:10px 16px}button:hover{background:#304d55}button:focus-visible{outline:3px solid #ffb676;outline-offset:3px}#scene{position:fixed;inset:0;touch-action:none}canvas{display:block;width:100%;height:100%}header{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:max(18px,env(safe-area-inset-top)) 20px 12px;pointer-events:none;background:linear-gradient(#101f29e8,transparent)}header>div,header>button{pointer-events:auto}small{display:block;letter-spacing:.16em;color:#91c6c2;font-size:10px;margin-bottom:5px}h1{font-size:clamp(19px,4.5vw,28px);margin:0;font-weight:600;letter-spacing:-.03em}.tag{color:#a5babd;font-size:12px;margin-top:5px}#labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}.label{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;font-size:13px;min-height:48px;border-radius:30px;padding:7px 12px;background:#10262ce8;border-color:#6ed6cd;box-shadow:0 4px 16px #0004;pointer-events:auto}.label::before{content:'●';color:#80e0d4;margin-right:6px}.label.door{border-color:#f2b279}.label.door::before{content:'↗';color:#f2b279}footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:end;gap:10px;padding:14px 20px max(18px,env(safe-area-inset-bottom));pointer-events:none;background:linear-gradient(transparent,#101f29e8)}footer button{pointer-events:auto}#status{color:#b5cbc9;font-size:12px;max-width:65%}#toast{position:fixed;top:105px;left:50%;transform:translateX(-50%);background:#d3f5e9;color:#17352e;border-radius:12px;padding:12px 18px;max-width:90%;width:max-content;pointer-events:none;opacity:0;transition:opacity .2s;z-index:5}#toast.show{opacity:1}dialog{width:min(420px,calc(100% - 32px));border:1px solid #7baba755;border-radius:22px;background:#182c35;color:#edf8f6;padding:26px;box-shadow:0 20px 80px #0009}dialog::backdrop{background:#061017a8;backdrop-filter:blur(5px)}dialog h2{font-size:24px;margin:8px 0 18px}dialog p{line-height:1.65;color:#bdd1d0}dialog button{width:100%;margin-top:10px}.room-choice{text-align:left;padding:16px}.room-choice span{display:block;font-size:12px;color:#abc6c4;margin-top:5px}#loading{position:fixed;inset:0;display:grid;place-content:center;text-align:center;padding:30px;background:#101f29;z-index:10}#loading p{max-width:420px;line-height:1.6;color:#aecac8}#loading button{max-width:220px;justify-self:center}@media(max-height:500px){header{padding-top:10px}.tag{display:none}footer{padding-bottom:10px}dialog{max-height:90dvh;overflow:auto}#toast{top:70px}}
+</style>
+<script src="../../assets/demo-nav.js" defer></script>
+</head>
+<body>
+<main id="scene" aria-label="Трёхмерная исследовательская станция"></main>
+<header><div><small>ТИХАЯ ОРБИТА / СТАНЦИЯ 07</small><h1 id="roomName">Жилой отсек</h1><div class="tag">Неизвестная планета · экипаж отсутствует</div></div><button id="roomsButton">Комнаты</button></header>
+<div id="labels"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<footer><div id="status">01 / 02 · Свободное исследование</div><button id="helpButton" aria-label="Управление">Как смотреть</button></footer>
+<dialog id="rooms"><small>ПЛАН СТАНЦИИ</small><h2>Куда отправимся?</h2><button class="room-choice" data-room="living">01 · Жилой отсек<span>Каюта, рабочая зона, панорамное окно</span></button><button class="room-choice" data-room="lab">02 · Лаборатория<span>Терминал, образец, сигнальная лампа</span></button><button data-close>Закрыть</button></dialog>
+<dialog id="message"><small id="messageTag">СТАНЦИЯ 07</small><h2 id="messageTitle"></h2><p id="messageText"></p><button data-close>Понятно</button></dialog>
+<div id="loading" role="status"><small>СТАНЦИЯ 07</small><h2>Подключение к станции…</h2><p>Создаём объёмные отсеки и включаем оборудование.</p></div>
+<script type="module">
+// Единственная внешняя зависимость: Three.js, строго версия 0.160.0.
+const $=id=>document.getElementById(id);
+let timer, ready=false;
+function fail(text){const panel=$('loading');panel.style.display='grid';panel.replaceChildren();const h=document.createElement('h2');h.textContent='Станция недоступна';const p=document.createElement('p');p.textContent=text;const b=document.createElement('button');b.textContent='Попробовать снова';b.onclick=()=>location.reload();panel.append(h,p,b)}
+function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(timer);timer=setTimeout(()=>$('toast').classList.remove('show'),2800)}
+function message(title,text,tag='СТАНЦИЯ 07'){$('messageTitle').textContent=title;$('messageText').textContent=text;$('messageTag').textContent=tag;if(!$('message').open)$('message').showModal()}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}}));
+function help(){message('Осмотр станции','Проведите пальцем или перетащите мышью, чтобы оглянуться на 360°. Вы стоите на месте. Коротко коснитесь отмеченного предмета или его подписи. Обозначенная дверь ведёт в соседний отсек. Все комнаты также доступны через меню «Комнаты».','УПРАВЛЕНИЕ')}
+$('helpButton').onclick=help;
+$('roomsButton').onclick=()=>{if(ready)$('rooms').showModal()};
+try{
+ const THREE=await Promise.race([import('../../assets/vendor/three-0.160.0.module.js'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('library timeout')),20000))]);
+ const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'low-power'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.setClearColor(0x101f29);$('scene').append(renderer.domElement);
+ const scene=new THREE.Scene();scene.fog=new THREE.Fog(0x101f29,23,48);
+ const camera=new THREE.PerspectiveCamera(78,1,.06,70);
+ scene.add(new THREE.HemisphereLight(0xe5fff5,0x556171,2.5));
+ const sun=new THREE.DirectionalLight(0xffe6ce,3);sun.position.set(-3,9,5);scene.add(sun);
+ const rim=new THREE.DirectionalLight(0x64c9d8,1.8);rim.position.set(2,4,-5);scene.add(rim);
+ const mat=(c,extra={})=>new THREE.MeshStandardMaterial({color:c,roughness:.85,flatShading:true,...extra});
+ const M={ivory:mat(0xd4ddd5),white:mat(0xe5e8d9),metal:mat(0x304650,{metalness:.5}),dark:mat(0x182c35),teal:mat(0x4caaa1),orange:mat(0xeaa36f),cloth:mat(0x68928e),glass:mat(0xbceee6,{transparent:true,opacity:.2,roughness:.15,depthWrite:false}),glow:mat(0x6bdfd0,{emissive:0x3bc9b6,emissiveIntensity:1.3}),screen:mat(0x133f45,{emissive:0x217f7c,emissiveIntensity:.5})};
+ const boxGeo=new THREE.BoxGeometry(1,1,1),cylGeo=new THREE.CylinderGeometry(1,1,1,24),orbGeo=new THREE.IcosahedronGeometry(1,0);
+ function box(g,x,y,z,w,h,d,m){const o=new THREE.Mesh(boxGeo,m);o.position.set(x,y,z);o.scale.set(w,h,d);g.add(o);return o}
+ function cyl(g,x,y,z,r,h,m){const o=new THREE.Mesh(cylGeo,m);o.position.set(x,y,z);o.scale.set(r,h,r);g.add(o);return o}
+ function group(parent,x=0,y=0,z=0){const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g}
+ const roots={},walls={},items={},allItems=[];
+ let current='living',yaw=0,pitch=-.06,down=null,dragged=false;
+ const spawn={living:new THREE.Vector3(.45,1.62,1.35),lab:new THREE.Vector3(.1,1.62,1.35)};
+ const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+ function surface(g,x,y,z,w,h,d,m,normal){const o=box(g,x,y,z,w,h,d,m);walls[g.userData.room].push({o,normal:new THREE.Vector3(...normal)});return o}
+ function base(id){const g=new THREE.Group();g.userData.room=id;roots[id]=g;walls[id]=[];items[id]=[];scene.add(g);
+  box(g,0,-.26,0,8.5,.5,6.5,M.dark);box(g,0,.015,0,8,.08,6,M.ivory);
+  for(let x=-3.5;x<4;x++)for(let z=-2.5;z<3;z++)box(g,x,.061,z,.975,.012,.975,((Math.round(x+z)%3)===0)?M.white:M.ivory);
+  surface(g,0,1.7,3,8,3.4,.14,M.ivory,[0,0,1]);
+  surface(g,-4,1.7,0,.14,3.4,6,M.ivory,[-1,0,0]);
+  surface(g,4,1.7,0,.14,3.4,6,M.ivory,[1,0,0]);
+  // Задняя стена с настоящим проёмом для окна.
+  surface(g,0,.43,-3,8,.86,.16,M.ivory,[0,0,-1]);surface(g,0,3.13,-3,8,.54,.16,M.ivory,[0,0,-1]);
+  surface(g,-3.55,1.85,-3,.9,2,.16,M.ivory,[0,0,-1]);surface(g,2.25,1.85,-3,3.5,2,.16,M.ivory,[0,0,-1]);
+  // Сплошной потолок и рамка вокруг открытого оконного проёма.
+  box(g,0,3.48,0,8.15,.16,6.15,M.white);
+  box(g,-3.1,1.85,-2.96,.15,2.06,.24,M.dark);box(g,.5,1.85,-2.96,.15,2.06,.24,M.dark);
+  box(g,-1.3,2.85,-2.96,3.75,.13,.24,M.dark);box(g,-1.3,.87,-2.96,3.75,.13,.24,M.dark);
+  box(g,-1.3,1.85,-2.98,3.45,1.83,.035,M.glass);
+  box(g,-1.3,.9,-2.82,3.8,.12,.35,M.metal);
+  for(const x of [-2,2]){box(g,x,3.36,-.2,.9,.08,1.6,M.metal);box(g,x,3.31,-.2,.72,.025,1.4,M.white)}
+  for(const x of [-3.88,3.88]){box(g,x,.22,0,.08,.2,5.9,M.metal);box(g,x,3.15,0,.09,.12,5.9,M.teal)}
+  for(let x=-3;x<4;x+=1.3)box(g,x,.13,2.7,.65,.025,.035,M.teal);
+  return g;
+ }
+ function landscape(g){const outside=group(g,0,0,-7);box(outside,0,-.5,0,21,.5,8,mat(0x596c75));
+  const mountainMat=mat(0x758b96);for(let i=0;i<11;i++){const o=new THREE.Mesh(new THREE.ConeGeometry(.7+(i%3)*.6,1.6+(i%4)*.7,5),mountainMat);o.position.set(-9+i*1.8,.4,-1-(i%3));outside.add(o)}
+  const planet=new THREE.Mesh(new THREE.SphereGeometry(.8,24,16),mat(0xe4c6a2,{emissive:0x5f4938,emissiveIntensity:.5}));planet.position.set(1,4,-4);outside.add(planet);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.25,.035,6,48),M.orange);ring.position.copy(planet.position);ring.rotation.x=.9;outside.add(ring);
+ }
+ function interactive(id,key,object,label,pos,action,door=false){object.userData.action=key;const b=document.createElement('button');b.className='label'+(door?' door':'');b.textContent=label;b.dataset.key=key;b.setAttribute('aria-label',label);$('labels').append(b);const item={id,key,object,b,point:new THREE.Vector3(...pos),action,visible:false};items[id].push(item);allItems.push(item);b.onclick=e=>{if(e.detail===0&&item.visible&&!modalOpen())action()};return item}
+ function door(g,id,destination){const d=group(g,2.6,0,2.84);d.rotation.y=Math.PI;box(d,0,1.25,0,1.35,2.5,.2,M.metal);box(d,0,1.23,.14,1.14,2.27,.08,M.dark);box(d,0,1.25,.2,.035,2.2,.025,M.teal);box(d,.38,1.1,.24,.1,.3,.08,M.orange);box(d,0,2.3,.24,.7,.06,.02,M.glow);interactive(id,'door',d,destination==='lab'?'В лабораторию':'В жилой отсек',[2.6,2.2,2.58],()=>switchRoom(destination),true)}
+ function desk(g,x,z){const d=group(g,x,0,z);box(d,0,1.03,0,2.25,.16,1.05,M.white);for(const dx of [-.92,.92]){box(d,dx,.5,0,.12,1,.78,M.metal);box(d,dx,.1,0,.4,.1,.86,M.dark)}return d}
+ const living=base('living');landscape(living);door(living,'living','lab');
+ const bed=group(living,-2.65,0,.6);box(bed,0,.27,0,1.65,.45,2.65,M.metal);box(bed,0,.56,0,1.6,.25,2.6,M.white);box(bed,0,.74,.42,1.62,.15,1.62,M.cloth);box(bed,0,.78,-.9,1.17,.2,.46,M.ivory);box(bed,0,.64,-1.35,1.75,1.05,.14,M.dark);for(const x of [-.65,.65])box(bed,x,.36,1.34,.06,.12,.025,M.glow);
+ desk(living,.1,-1.85);box(living,-.45,1.15,-1.85,.55,.07,.4,M.orange);box(living,-.43,1.2,-1.85,.45,.025,.32,M.white);
+ const chair=group(living,.1,0,-.45);cyl(chair,0,.36,0,.09,.6,M.metal);box(chair,0,.68,0,.8,.18,.75,M.cloth);box(chair,0,1.1,.32,.8,.85,.13,M.cloth);for(let i=0;i<4;i++){const o=box(chair,0,.1,0,1.05,.08,.08,M.metal);o.rotation.y=i*Math.PI/2}
+ const lamp=group(living,.82,1.12,-1.9);cyl(lamp,0,.03,0,.22,.06,M.metal);cyl(lamp,0,.36,0,.045,.65,M.orange);const shade=new THREE.Mesh(new THREE.ConeGeometry(.31,.32,24,1,true),M.orange);shade.position.y=.68;lamp.add(shade);const bulb=cyl(lamp,0,.54,0,.23,.035,M.glow);const lampLight=new THREE.PointLight(0xffcf8d,3,4,2);lampLight.position.set(0,.48,0);lamp.add(lampLight);let lampOn=true;
+ interactive('living','lamp',lamp,'Лампа: включена',[.82,1.98,-1.9],()=>{lampOn=!lampOn;lampLight.visible=lampOn;bulb.material=lampOn?M.glow:M.ivory;items.living.find(i=>i.key==='lamp').b.textContent='Лампа: '+(lampOn?'включена':'выключена');toast(lampOn?'Настольная лампа включена':'Настольная лампа выключена')});
+ const wardrobe=group(living,2.7,0,-1.9);box(wardrobe,0,1.22,0,1.45,2.44,.85,M.metal);box(wardrobe,0,1.24,.45,1.29,2.24,.08,M.ivory);box(wardrobe,0,1.24,.5,.025,2.22,.02,M.dark);for(const x of [-.12,.12])box(wardrobe,x,1.2,.53,.045,.3,.055,M.orange);box(wardrobe,0,2.12,.51,.66,.06,.025,M.teal);
+ interactive('living','wardrobe',wardrobe,'Шкаф',[2.7,2.1,-1.33],()=>message('Скафандр на обслуживании','Система герметизации проходит диагностику. Скафандр находится внутри сервисного шкафа.'));
+ const lab=base('lab');landscape(lab);door(lab,'lab','living');desk(lab,-1.9,-1.75);desk(lab,1,-1.75);
+ const terminal=group(lab,-1.9,1.13,-1.85);box(terminal,0,.15,0,.25,.3,.24,M.metal);box(terminal,0,.52,0,1.36,.83,.16,M.dark);box(terminal,0,.52,.09,1.17,.65,.025,M.screen);for(let i=0;i<4;i++)box(terminal,-.08,.7-i*.12,.11,.75-i*.12,.025,.01,M.glow);box(terminal,0,-.01,.35,1.05,.06,.32,M.metal);for(let i=0;i<7;i++)box(terminal,-.4+i*.13,.03,.35,.08,.015,.18,M.ivory);
+ interactive('lab','terminal',terminal,'Терминал',[-1.9,1.93,-1.71],()=>message('Образец K-17','Запись 042. В пористой породе обнаружены кристаллические структуры. При изменении режима освещения образец переходит из бирюзового состояния в янтарное. Температура и давление стабильны. Признаков опасной активности нет. Наблюдение продолжается.','ИССЛЕДОВАТЕЛЬСКИЙ ЖУРНАЛ'));
+ const capsule=group(lab,1,1.13,-1.75);cyl(capsule,0,.1,0,.51,.2,M.metal);cyl(capsule,0,.24,0,.4,.08,M.glow);cyl(capsule,0,.78,0,.43,1.02,M.glass);cyl(capsule,0,1.32,0,.5,.12,M.metal);for(let i=0;i<3;i++){let a=i*2*Math.PI/3;cyl(capsule,Math.cos(a)*.44,.78,Math.sin(a)*.44,.025,1.03,M.metal)}
+ const sampleMat=mat(0x58e0ce,{emissive:0x27b59f,emissiveIntensity:.8,metalness:.25});const sample=new THREE.Mesh(orbGeo,sampleMat);sample.scale.set(.22,.4,.22);sample.position.y=.76;capsule.add(sample);const sampleLight=new THREE.PointLight(0x55ddcc,1.4,3);sampleLight.position.set(0,.8,0);capsule.add(sampleLight);
+ const signal=group(lab,1.78,1.13,-1.6);cyl(signal,0,.05,0,.2,.1,M.metal);const beacon=cyl(signal,0,.22,0,.14,.28,sampleMat);cyl(signal,0,.38,0,.16,.05,M.metal);let amber=false;
+ interactive('lab','capsule',capsule,'Капсула: бирюзовый',[1,2.85,-1.75],()=>{amber=!amber;sampleMat.color.setHex(amber?0xf3a15c:0x58e0ce);sampleMat.emissive.setHex(amber?0xd47222:0x27b59f);sampleLight.color.copy(sampleMat.color);items.lab.find(i=>i.key==='capsule').b.textContent='Капсула: '+(amber?'оранжевый':'бирюзовый');toast('Образец и сигнальная лампа: '+(amber?'оранжевый режим':'бирюзовый режим'))});
+ const cabinet=group(lab,-2.8,0,1.3);box(cabinet,0,.5,0,1.4,1,.9,M.metal);box(cabinet,0,1.04,0,1.5,.1,1,M.white);for(let i=0;i<3;i++){box(cabinet,0,.22+i*.29,.47,1.25,.24,.04,M.ivory);box(cabinet,0,.22+i*.29,.51,.33,.03,.04,M.orange)}
+ function modalOpen(){return $('rooms').open||$('message').open}
+ function switchRoom(id){if(!roots[id])return;current=id;for(const k in roots)roots[k].visible=k===id;yaw=0;pitch=-.06;down=null;dragged=false;$('roomName').textContent=id==='living'?'Жилой отсек':'Лаборатория';$('status').textContent=(id==='living'?'01':'02')+' / 02 · Осмотр на 360°';for(const i of allItems)i.b.hidden=true;if($('rooms').open)$('rooms').close();updateCamera();toast(id==='living'?'Вы в жилом отсеке':'Вы в лаборатории')}
+ document.querySelectorAll('[data-room]').forEach(b=>b.onclick=()=>switchRoom(b.dataset.room));
+ function updateCamera(){camera.position.copy(spawn[current]);camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();scene.updateMatrixWorld(true)}
+ function resize(){renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();updateCamera()}
+ function actionKey(o){while(o){if(o.userData.action)return o.userData.action;o=o.parent}return null}
+ function firstHit(){return ray.intersectObject(roots[current],true).find(hit=>{let o=hit.object;while(o){if(!o.visible)return false;o=o.parent}return !hit.object.material.transparent})}
+ function pointVisible(item){const p=item.point.clone().project(camera);const y=(-p.y*.5+.5)*innerHeight;if(p.z< -1||p.z>1||Math.abs(p.x)>.82||y<130||y>innerHeight-85)return false;const direction=item.point.clone().sub(camera.position);const distance=direction.length();ray.set(camera.position,direction.normalize());const hit=firstHit();if(hit&&hit.distance<distance-.06&&actionKey(hit.object)!==item.key)return false;return p}
+ function labels(){for(const item of allItems){let p=false;if(item.id===current&&!modalOpen())p=pointVisible(item);item.visible=!!p;item.b.hidden=!p;if(p){item.b.style.left=(p.x*.5+.5)*innerWidth+'px';item.b.style.top=(-p.y*.5+.5)*innerHeight+'px'}}}
+ const canvas=renderer.domElement;
+ function start(e){if(modalOpen()||down||e.button!==0||!e.isPrimary)return;e.preventDefault();down={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,time:performance.now(),label:e.target.closest?.('.label')?.dataset.key,surface:e.currentTarget};dragged=false;e.currentTarget.setPointerCapture(e.pointerId)}
+ function move(e){if(!down||e.pointerId!==down.id)return;e.preventDefault();if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>7)dragged=true;if(dragged&&!modalOpen()){yaw-=(e.clientX-down.lastX)*.005;pitch=THREE.MathUtils.clamp(pitch-(e.clientY-down.lastY)*.005,-1.25,1.25);yaw=THREE.MathUtils.euclideanModulo(yaw+Math.PI,Math.PI*2)-Math.PI;updateCamera()}down.lastX=e.clientX;down.lastY=e.clientY}
+ function end(e){if(!down||e.pointerId!==down.id)return;const saved=down;const tap=!dragged&&Math.hypot(e.clientX-saved.x,e.clientY-saved.y)<=7&&performance.now()-saved.time<650;down=null;if(saved.surface.hasPointerCapture(e.pointerId))saved.surface.releasePointerCapture(e.pointerId);if(!tap||modalOpen())return;if(saved.label){const item=items[current].find(i=>i.key===saved.label);if(item&&pointVisible(item))item.action();return}ndc.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(ndc,camera);const hit=firstHit();if(hit){const key=actionKey(hit.object);const item=items[current].find(i=>i.key===key);if(item)item.action()}}
+ const cancel=()=>{down=null;dragged=false};for(const surface of [canvas,$('labels')]){surface.style.touchAction='none';surface.addEventListener('pointerdown',start);surface.addEventListener('pointermove',move);surface.addEventListener('pointerup',end);surface.addEventListener('pointercancel',cancel);surface.addEventListener('lostpointercapture',cancel);surface.addEventListener('contextmenu',e=>e.preventDefault())}window.addEventListener('blur',cancel);window.addEventListener('resize',resize);document.querySelectorAll('dialog').forEach(d=>d.addEventListener('close',cancel));
+ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();ready=false;fail('Графический контекст был потерян. Закройте тяжёлые приложения и перезагрузите страницу.')});
+ switchRoom('living');resize();ready=true;$('loading').style.display='none';help();
+ let last=0;function frame(t){if(!ready)return;requestAnimationFrame(frame);if(document.hidden||t-last<32)return;last=t;sample.rotation.y=t*.00035;sample.rotation.z=Math.sin(t*.0006)*.1;scene.updateMatrixWorld(true);labels();renderer.render(scene,camera)}requestAnimationFrame(frame);
+}catch(error){console.error(error);fail('Для станции нужны WebGL и интернет для загрузки Three.js 0.160.0 с CDN. Проверьте соединение и поддержку аппаратной графики в браузере, затем повторите попытку.')}
+</script>
+</body>
+</html>
