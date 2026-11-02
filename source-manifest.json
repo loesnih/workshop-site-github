@@ -1,0 +1,120 @@
+{
+  "items": [
+    {
+      "source": "room.html",
+      "destination": "demos/isometric/index.html",
+      "source_sha256": "3269b47347848993a863299140191b3076971bf755fa7dfdf743af4c96d7b0fc",
+      "changes": [
+        "Добавлена навигация к главному меню"
+      ]
+    },
+    {
+      "source": "room-3d.html",
+      "destination": "demos/room-3d/index.html",
+      "source_sha256": "b8602d97dda404597af794b885b992730fa8a51030940fec35e83c115a6c7bb3",
+      "changes": [
+        "Добавлена навигация к главному меню"
+      ]
+    },
+    {
+      "source": "room-3dSollight.html",
+      "destination": "demos/sol-light/index.html",
+      "source_sha256": "67bb90b706190b53146607dd2d5761f35625ce9b9ca9430a8737093cb8aa673d",
+      "changes": [
+        "Добавлена навигация к главному меню",
+        "Удалена вторая идентичная копия HTML-документа"
+      ]
+    },
+    {
+      "source": "index.html",
+      "destination": "demos/echo/index.html",
+      "source_sha256": "a279dbeded34fa9e3704809620339e293863717834f251e0f8c94e08ce1602f9",
+      "changes": [
+        "Добавлена навигация к главному меню",
+        "Three.js включена локально"
+      ]
+    },
+    {
+      "source": "research-station/index.html",
+      "destination": "demos/research/index.html",
+      "source_sha256": "f11efcf4f53facc3a74050eb69f4348ebcd6da6b99c45bcbe8035ae7c11216d7",
+      "changes": [
+        "Добавлена навигация к главному меню",
+        "Three.js включена локально"
+      ]
+    },
+    {
+      "source": "research-station-v2/index.html",
+      "destination": "demos/research-v2/index.html",
+      "source_sha256": "9fcc83f8201ca284619453b17301530617c6f3f657fd6020169d7d9deed674f5",
+      "changes": [
+        "Добавлена навигация к главному меню",
+        "Three.js включена локально"
+      ]
+    },
+    {
+      "source": "research-station-fps/index.html",
+      "destination": "demos/research-fps/index.html",
+      "source_sha256": "ea507ee02904808ef93965df50176d1ba41a7eae1c51e6bb37b159fe00dbb875",
+      "changes": [
+        "Добавлена навигация к главному меню",
+        "Three.js включена локально"
+      ]
+    },
+    {
+      "source": "station-single/index.html",
+      "destination": "demos/horizon/index.html",
+      "source_sha256": "fb85636f28c3e9d4616a220c6937711c3ce7cc941d8f9d9b65c0d3fc2a2b56a0",
+      "changes": [
+        "Добавлена навигация к главному меню",
+        "Three.js включена локально"
+      ]
+    },
+    {
+      "source": "terminal/index.html",
+      "destination": "demos/terminal/index.html",
+      "source_sha256": "a4c63d2e4eb4d5283fe1cb6001a027a53cc0c2d73c88f2901082731d3551b311",
+      "changes": [
+        "Добавлена навигация к главному меню"
+      ]
+    },
+    {
+      "source": "map/index.html",
+      "destination": "demos/map/index.html",
+      "source_sha256": "05fb5acd16c371da43f884ce6ef3fa618619a48ecff465b66356ce7db92a9928",
+      "changes": [
+        "Добавлена навигация к главному меню"
+      ]
+    },
+    {
+      "source": "room-ar.html",
+      "destination": "demos/ar-spatial/index.html",
+      "source_sha256": "636166f8d098dc8b8d598b04b2450a303cd8673f2f20d432f20ef84f2ae40e12",
+      "changes": [
+        "Добавлена навигация к главному меню"
+      ]
+    },
+    {
+      "source": "arjs-demo/index.html",
+      "destination": "demos/ar-marker/index.html",
+      "source_sha256": "5e5a4e396b0a38e2d7c5d1f0d51462441ec4fb6331eeeae6bbaaf43eab97598e",
+      "changes": [
+        "Добавлена навигация к главному меню"
+      ]
+    },
+    {
+      "source": "prompt-generator.html",
+      "destination": "generator/index.html",
+      "changes": [
+        "Убрано поле визуального стиля",
+        "Убрано постоянное сохранение игрового прогресса",
+        "Вывод требует HTML-файл для скачивания и полный код",
+        "Добавлена навигация"
+      ]
+    }
+  ],
+  "duplicate_sources": {
+    "prompt-generator-upload/index.html": "generator/index.html",
+    "ar-upload/index.html": "demos/ar-spatial/index.html"
+  }
+}

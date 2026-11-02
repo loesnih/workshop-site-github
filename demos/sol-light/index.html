@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <title>Исследовательская станция</title>
+    <style>
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: #111c23;
+            color: #edf7f8;
+            font: 16px system-ui,sans-serif;
+            overflow: hidden
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100dvh;
+            touch-action: none
+        }
+
+        button {
+            font: inherit;
+            color: inherit;
+            background: #20373e;
+            border: 1px solid #66878b;
+            border-radius: 13px;
+            padding: 13px 18px;
+            min-height: 48px;
+            cursor: pointer
+        }
+
+            button:hover {
+                background: #315158
+            }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: max(16px,env(safe-area-inset-top)) 18px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            background: linear-gradient(#101e29cc,transparent)
+        }
+
+            header > * {
+                pointer-events: auto
+            }
+
+        .eyebrow {
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #98d5d7;
+            margin-bottom: 5px
+        }
+
+        h1 {
+            font-size: clamp(18px,4vw,25px);
+            margin: 0;
+            font-weight: 550
+        }
+
+        #hint {
+            position: fixed;
+            bottom: max(20px,env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: 90vw;
+            text-align: center;
+            background: #142a32e8;
+            border: 1px solid #49616a;
+            padding: 12px 18px;
+            border-radius: 15px;
+            font-size: 13px;
+            pointer-events: none
+        }
+
+        #markers {
+            position: fixed;
+            inset: 0;
+            pointer-events: none
+        }
+
+        .marker {
+            position: absolute;
+            transform: translate(-50%,-50%);
+            background: #102b33de;
+            border: 1px solid #6bcbcb;
+            border-radius: 12px;
+            padding: 7px 10px;
+            font-size: 12px;
+            white-space: nowrap;
+            color: #eaffff
+        }
+
+            .marker:before {
+                content: '◉ ';
+                color: #79e1db
+            }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: #08151c99;
+            display: grid;
+            place-items: center;
+            padding: 22px;
+            backdrop-filter: blur(5px)
+        }
+
+            .overlay[hidden] {
+                display: none
+            }
+
+        .panel {
+            width: min(440px,100%);
+            background: #172b34;
+            border: 1px solid #648087;
+            border-radius: 22px;
+            padding: 25px;
+            box-shadow: 0 25px 90px #0008
+        }
+
+            .panel h2 {
+                margin: 0 0 16px;
+                font-size: 24px
+            }
+
+            .panel p {
+                line-height: 1.65;
+                color: #cee0e4;
+                white-space: pre-line
+            }
+
+            .panel button {
+                width: 100%;
+                margin-top: 10px
+            }
+
+        .small {
+            font-size: 12px;
+            color: #82bfc3;
+            letter-spacing: 2px
+        }
+
+        #toast {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #142e36f2;
+            padding: 12px 18px;
+            border-radius: 14px;
+            pointer-events: none;
+            max-width: 90vw;
+            text-align: center;
+            opacity: 0;
+            transition: opacity .2s
+        }
+    </style>
+<script src="../../assets/demo-nav.js" defer></script>
+</head>
+<body>
+    <canvas id="scene" aria-label="Трёхмерная исследовательская станция"></canvas>
+    <header><div><div class="eyebrow">СТАНЦИЯ / ЭОС–07</div><h1 id="roomTitle">Жилой отсек</h1></div><button id="rooms">Комнаты</button></header>
+    <div id="markers"></div>
+    <div id="hint">Потяните для осмотра · Коснитесь отмеченного предмета</div>
+    <div id="toast" role="status"></div>
+    <div id="overlay" class="overlay" hidden><section class="panel" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="small">ЭОС–07 / ИНТЕРФЕЙС</div><h2 id="dialogTitle"></h2><div id="dialogBody"></div><button id="close">Закрыть</button></section></div>
+    <script>
+        'use strict';
+        const $ = id => document.getElementById(id), canvas = $('scene');
+        const gl = canvas.getContext('webgl', { alpha: false, antialias: true });
+        if (!gl) { $('overlay').hidden = false; $('dialogTitle').textContent = 'WebGL недоступен'; $('dialogBody').textContent = 'Для осмотра станции откройте файл в браузере с поддержкой WebGL и включённым аппаратным ускорением.'; $('close').hidden = true; }
+        else {
+            const vs = `attribute vec3 p,n;uniform mat4 vp;uniform vec3 pos,size;varying vec3 N,W;void main(){W=p*size+pos;N=n;gl_Position=vp*vec4(W,1.);}`;
+            const fs = `precision mediump float;varying vec3 N,W;uniform vec3 color,eye;uniform float glow,lamp;void main(){vec3 nn=normalize(N);float sun=max(dot(nn,normalize(vec3(-.7,1.,.5))),0.);vec3 l=vec3(-2.,1.9,-2.2)-W;float local=max(dot(nn,normalize(l)),0.)/(1.+dot(l,l)*.5)*lamp;vec3 c=color*(.40+sun*.58+local*.95)+color*glow;float fog=clamp(length(W-eye)*.012,0.,.14);gl_FragColor=vec4(mix(c,vec3(.10,.17,.20),fog),1.);}`;
+            function shader(t, s) { let x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(x)); return x }
+            const prog = gl.createProgram(); gl.attachShader(prog, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog);
+            const verts = [];
+            function face(a, b, c, d, n) { for (const v of [a, b, c, a, c, d]) verts.push(...v, ...n) }
+            face([-.5, -.5, .5], [.5, -.5, .5], [.5, .5, .5], [-.5, .5, .5], [0, 0, 1]);
+            face([.5, -.5, -.5], [-.5, -.5, -.5], [-.5, .5, -.5], [.5, .5, -.5], [0, 0, -1]);
+            face([.5, -.5, .5], [.5, -.5, -.5], [.5, .5, -.5], [.5, .5, .5], [1, 0, 0]);
+            face([-.5, -.5, -.5], [-.5, -.5, .5], [-.5, .5, .5], [-.5, .5, -.5], [-1, 0, 0]);
+            face([-.5, .5, .5], [.5, .5, .5], [.5, .5, -.5], [-.5, .5, -.5], [0, 1, 0]);
+            face([-.5, -.5, -.5], [.5, -.5, -.5], [.5, -.5, .5], [-.5, -.5, .5], [0, -1, 0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+            for (const [name, offset] of [['p', 0], ['n', 12]]) { let a = gl.getAttribLocation(prog, name); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 24, offset) }
+            const u = {}; for (const s of ['vp', 'pos', 'size', 'color', 'eye', 'glow', 'lamp']) u[s] = gl.getUniformLocation(prog, s);
+            gl.enable(gl.DEPTH_TEST);
+            const C = { wall: [.70, .76, .76], metal: [.12, .19, .22], white: [.84, .86, .81], teal: [.13, .77, .75], orange: [1, .39, .12], cloth: [.30, .42, .46] };
+            let objects = [], targets = [], room = 0, yaw = 0, pitch = -.04, lamp = true, orange = false, eye = [0, 1.65, 2.1], vp, drag = null, toastTimer;
+            function box(pos, size, color, id = null, glow = 0, solid = true) { let o = { pos, size, color, id, glow, solid }; objects.push(o); return o }
+            function target(id, label, p) { targets.push({ id, label, p }) }
+            function legs(x, z, w, d, h) { for (let a of [-1, 1]) for (let b of [-1, 1]) box([x + a * (w / 2 - .09), h / 2, z + b * (d / 2 - .09)], [.09, h, .09], C.metal) }
+            function table(x, z, w, d, h) { box([x, h, z], [w, .12, d], C.white); legs(x, z, w, d, h) }
+            function build() {
+                objects = []; targets = [];
+                box([0, -.12, 0], [8, .24, 9], C.metal); box([0, 3.35, 0], [8, .18, 9], C.wall);
+                box([-4, 1.6, 0], [.18, 3.3, 9], C.wall); box([4, 1.6, 0], [.18, 3.3, 9], C.wall); box([0, 1.6, 4.5], [8, 3.3, .18], C.wall);
+                for (let x = -3; x <= 3; x++)box([x, .008, 0], [.015, .01, 9], [.25, .34, .37]);
+                for (let z = -4; z <= 4; z++)box([0, .009, z], [8, .01, .015], [.25, .34, .37]);
+                box([-2.95, 1.6, -4.5], [2.1, 3.3, .18], C.wall); box([2.95, 1.6, -4.5], [2.1, 3.3, .18], C.wall);
+                box([0, .34, -4.5], [3.8, .68, .18], C.wall); box([0, 3.02, -4.5], [3.8, .65, .18], C.wall);
+                box([0, 1.8, -7.8], [8, 5, .2], [.20, .34, .40], null, .25);
+                for (let i = 0; i < 14; i++) { let x = Math.sin(i * 9) * 5; box([x, -.2 + Math.sin(i * 3) * .25, -6 - i % 3], [1.4, 1.1 + (i % 4) * .35, 1.3], [.25 + i % 3 * .035, .33, .34]); }
+                box([2.1, 2.85, -7.5], [.65, .65, .12], [.75, .66, .46], null, .5);
+                for (let x of [-1.96, 1.96]) box([x, 1.8, -4.35], [.12, 2.32, .22], C.metal);
+                for (let y of [.65, 2.9]) box([0, y, -4.35], [4, .13, .25], C.metal);
+                for (let x of [-2.8, 2.8]) { box([x, 3.22, 0], [.8, .06, 3.5], C.white, null, .7); box([x, 3.16, 0], [.58, .025, 3.2], C.teal, null, .8) }
+                // Дверь расположена на задней стене; её створка закрывает стенной проём.
+                box([2.3, 1.35, 4.37], [1.55, 2.7, .22], C.metal, 'door');
+                box([2.3, 1.35, 4.23], [1.3, 2.48, .08], [.32, .43, .46], 'door');
+                box([2.3, 1.35, 4.16], [.035, 2.45, .04], C.teal, 'door', .7);
+                target('door', room ? 'Жилой отсек →' : 'Лаборатория →', [2.3, 1.9, 4.08]);
+                if (!room) {
+                    box([-2.65, .32, .1], [1.65, .5, 2.7], C.metal); box([-2.65, .67, .1], [1.62, .25, 2.65], C.white); box([-2.65, .84, .55], [1.64, .13, 1.65], C.cloth); box([-2.65, .87, -.88], [1.15, .18, .55], C.white); box([-2.65, .7, -1.31], [1.75, 1.3, .12], C.metal);
+                    table(-1.9, -2.8, 2.35, 1.05, 1.04);
+                    box([-1.8, 1.48, -3.02], [.85, .57, .1], C.metal); box([-1.8, 1.48, -2.955], [.72, .44, .025], C.teal, null, .3); box([-1.8, 1.18, -3], [.08, .3, .08], C.metal);
+                    box([-2.75, 1.15, -2.65], [.32, .08, .32], C.metal, 'lamp'); box([-2.75, 1.52, -2.65], [.045, .7, .045], C.metal, 'lamp'); box([-2.75, 1.91, -2.65], [.48, .18, .34], lamp ? C.white : C.metal, 'lamp', lamp ? .8 : 0); target('lamp', 'Настольная лампа', [-2.75, 2.15, -2.65]);
+                    box([-1.3, .65, -1.5], [.65, .16, .65], C.cloth); legs(-1.3, -1.5, .6, .6, .6); box([-1.3, 1.04, -1.16], [.66, .75, .12], C.cloth);
+                    box([2.95, 1.3, -1.9], [1.35, 2.6, .85], C.white, 'cabinet'); box([2.95, 1.3, -1.46], [.025, 2.4, .035], C.metal, 'cabinet'); for (let x of [2.79, 3.1]) box([x, 1.3, -1.4], [.05, .34, .07], C.metal, 'cabinet'); target('cabinet', 'Шкаф', [2.95, 2.15, -1.35]);
+                } else {
+                    table(0, -2.3, 3.6, 1.4, 1);
+                    box([-1.05, 1.55, -2.55], [1.02, .72, .16], C.metal, 'terminal'); box([-1.05, 1.55, -2.455], [.88, .57, .025], [.04, .26, .30], 'terminal', .2);
+                    for (let i = 0; i < 5; i++)box([-1.12, 1.73 - i * .09, -2.43], [.58 - (i % 2) * .2, .016, .015], C.teal, 'terminal', .8);
+                    box([-1.05, 1.2, -2.55], [.12, .35, .13], C.metal, 'terminal'); box([-1.05, 1.1, -1.98], [1, .06, .36], C.metal, 'terminal'); target('terminal', 'Терминал', [-1.05, 2.12, -2.5]);
+                    let color = orange ? C.orange : C.teal;
+                    box([.85, 1.14, -2.25], [1.05, .18, .95], C.metal, 'sample'); box([.85, 2.28, -2.25], [1.05, .16, .95], C.metal, 'sample');
+                    for (let x of [.38, 1.32]) for (let z of [-2.67, -1.83]) box([x, 1.72, z], [.045, 1.04, .045], [.52, .76, .77], 'sample');
+                    box([.85, 1.29, -2.25], [.8, .08, .73], color, 'sample', .6);
+                    box([.85, 1.7, -2.25], [.32, .65, .32], color, 'sample', .3); box([.85, 1.72, -2.25], [.56, .27, .42], color, 'sample', .2);
+                    // Тонкие прозрачные стенки капсулы отрисовываются отдельно.
+                    box([.85, 1.73, -1.8], [.91, 1, .016], [.45, .85, .87], null, 0, false);
+                    target('sample', 'Капсула · сменить спектр', [.85, 2.58, -2.25]);
+                    box([2.9, 1.1, -2.5], [.8, 2.2, .7], C.white); box([2.9, 2.29, -2.5], [.35, .22, .35], color, null, .85);
+                    for (let i = 0; i < 4; i++)box([2.9, .55 + i * .3, -2.135], [.52, .07, .02], C.metal);
+                }
+            }
+            function message(title, text) { $('dialogTitle').textContent = title; $('dialogBody').replaceChildren(); let p = document.createElement('p'); p.textContent = text; $('dialogBody').append(p); $('overlay').hidden = false; drag = null }
+            function toast(s) { $('toast').textContent = s; $('toast').style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').style.opacity = 0, 2600) }
+            function enter(n) { room = n; yaw = 0; pitch = -.04; build(); $('roomTitle').textContent = n ? 'Лаборатория' : 'Жилой отсек'; $('overlay').hidden = true; drag = null }
+            function act(id) { if (id === 'door') enter(1 - room); if (id === 'lamp') { lamp = !lamp; build(); toast(lamp ? 'Настольная лампа включена' : 'Настольная лампа выключена') } if (id === 'cabinet') message('Шкаф', 'Скафандр на обслуживании'); if (id === 'terminal') message('Запись 042 / Образец Э–17', 'Исследование неизвестной кристаллической структуры.\n\nОбразец стабилен. При смене режима возбуждения свечение переходит из бирюзового спектра в оранжевый. Изменение обратимо; тепловой активности не обнаружено.\n\nСигнальная лампа отображает текущий спектр. Наблюдение продолжается в автоматическом режиме.\n\nПоследняя отметка экипажа: «Вернёмся после проверки внешних датчиков».'); if (id === 'sample') { orange = !orange; build(); toast('Спектр образца: ' + (orange ? 'оранжевый' : 'бирюзовый')) } }
+            function ray(dir) { let best = Infinity, hit = null; for (let o of objects) { if (!o.solid) continue; let lo = 0, hi = 100; for (let i = 0; i < 3; i++) { let a = o.pos[i] - o.size[i] / 2, b = o.pos[i] + o.size[i] / 2; if (Math.abs(dir[i]) < 1e-7) { if (eye[i] < a || eye[i] > b) { hi = -1; break } } else { let t = (a - eye[i]) / dir[i], v = (b - eye[i]) / dir[i]; lo = Math.max(lo, Math.min(t, v)); hi = Math.min(hi, Math.max(t, v)) } } if (hi >= lo && lo < best) { best = lo; hit = o } } return { o: hit, t: best } }
+            function basis() { let f = [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)], r = [Math.cos(yaw), 0, Math.sin(yaw)], v = [-Math.sin(yaw) * Math.sin(pitch), Math.cos(pitch), Math.cos(yaw) * Math.sin(pitch)]; return { f, r, v } }
+            const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+            canvas.addEventListener('pointerdown', e => { if (!$('overlay').hidden || drag) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: 0 }; canvas.setPointerCapture(e.pointerId) });
+            canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.x, e.clientY - drag.y)); yaw -= (e.clientX - drag.lastX) * .005; pitch = Math.max(-1.25, Math.min(1.25, pitch + (e.clientY - drag.lastY) * .005)); drag.lastX = e.clientX; drag.lastY = e.clientY });
+            canvas.addEventListener('pointerup', e => { if (!drag || drag.id !== e.pointerId) return; let tap = drag.moved < 8; drag = null; if (!tap) return; let { f, r, v } = basis(), t = Math.tan(Math.PI / 6), a = canvas.clientWidth / canvas.clientHeight, x = (e.clientX / canvas.clientWidth * 2 - 1) * t * a, y = (1 - e.clientY / canvas.clientHeight * 2) * t; let d = f.map((n, i) => n + r[i] * x + v[i] * y), l = Math.hypot(...d); let h = ray(d.map(n => n / l)); if (h.o?.id) act(h.o.id) });
+            canvas.addEventListener('pointercancel', () => drag = null); canvas.addEventListener('lostpointercapture', () => drag = null);
+            $('rooms').onclick = () => { message('Комнаты', 'Свободный осмотр станции'); for (let [i, name] of ['Жилой отсек', 'Лаборатория'].entries()) { let b = document.createElement('button'); b.textContent = name + (i === room ? ' · вы здесь' : ' →'); b.onclick = () => enter(i); $('dialogBody').append(b) } };
+            $('close').onclick = () => $('overlay').hidden = true;
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') $('overlay').hidden = true });
+            build();
+            function frame() {
+                let w = Math.round(canvas.clientWidth * Math.min(devicePixelRatio, 1.5)), h = Math.round(canvas.clientHeight * Math.min(devicePixelRatio, 1.5)); if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h } gl.viewport(0, 0, w, h); gl.clearColor(.12, .19, .23, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                let { f, r, v } = basis(), s = 1 / Math.tan(Math.PI / 6), a = w / h, near = .08, far = 60, A = (far + near) / (near - far), B = 2 * far * near / (near - far);
+                vp = new Float32Array([s / a * r[0], s * v[0], -A * f[0], f[0], s / a * r[1], s * v[1], -A * f[1], f[1], s / a * r[2], s * v[2], -A * f[2], f[2], -s / a * dot(r, eye), -s * dot(v, eye), A * dot(f, eye) + B, -dot(f, eye)]);
+                gl.uniformMatrix4fv(u.vp, false, vp); gl.uniform3fv(u.eye, eye); gl.uniform1f(u.lamp, !room && lamp ? 1 : 0);
+                for (let o of objects) { if (!o.solid) continue; gl.uniform3fv(u.pos, o.pos); gl.uniform3fv(u.size, o.size); gl.uniform3fv(u.color, o.color); gl.uniform1f(u.glow, o.glow); gl.drawArrays(gl.TRIANGLES, 0, 36) }
+                // Стекло смешивается с уже отрисованной сценой, сохраняя видимость образца.
+                gl.enable(gl.BLEND); gl.blendColor(.5, .8, .8, .12); gl.blendFunc(gl.CONSTANT_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA); gl.depthMask(false);
+                for (let o of objects.filter(o => !o.solid)) { gl.uniform3fv(u.pos, o.pos); gl.uniform3fv(u.size, o.size); gl.uniform3fv(u.color, o.color); gl.uniform1f(u.glow, 0); gl.drawArrays(gl.TRIANGLES, 0, 36) }
+                gl.depthMask(true); gl.disable(gl.BLEND);
+                $('markers').replaceChildren();
+                for (let t of targets) {
+                    let d = t.p.map((x, i) => x - eye[i]), z = dot(d, f); if (z < .2) continue; let xx = dot(d, r) * s / a / z, yy = dot(d, v) * s / z; if (Math.abs(xx) > .92 || Math.abs(yy) > .77) continue;
+                    let distance = Math.hypot(...d), hit = ray(d.map(x => x / distance));
+                    // Допускается подпись над собственным предметом, но не сквозь препятствия.
+                    if (hit.t < distance - .18 && hit.o?.id !== t.id) continue;
+                    let el = document.createElement('div'); el.className = 'marker'; el.textContent = t.label; el.style.left = (xx + 1) * 50 + '%'; el.style.top = (1 - yy) * 50 + '%'; $('markers').append(el)
+                }
+                requestAnimationFrame(frame)
+            }
+            requestAnimationFrame(frame);
+            setTimeout(() => $('hint').textContent = '◉ Отмеченные предметы доступны для взаимодействия', 9000);
+        }
+    </script>
+</body>
+</html>

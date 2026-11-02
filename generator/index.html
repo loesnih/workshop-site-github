@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111320">
+<title>Конструктор промпта · 3D-локация</title>
+<style>
+:root{color-scheme:dark;--bg:#10121d;--panel:#191d2c;--ink:#f0f1fa;--muted:#a9afc5;--cyan:#8aefdc;--pink:#eda5d1;--line:#343b50}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1320px;margin:auto;padding:38px 24px 60px}header{margin-bottom:30px}.eyebrow{font:12px ui-monospace,Consolas,monospace;letter-spacing:.14em;color:var(--pink)}h1{font-size:clamp(29px,5vw,46px);line-height:1.12;font-weight:650;margin:15px 0}header p{color:var(--muted);max-width:780px;margin:0}a{color:var(--cyan)}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}fieldset{margin:0 0 20px;border:1px solid var(--line);border-radius:16px;padding:22px;background:var(--panel);min-width:0}legend{padding:0 8px;font-size:18px;font-weight:650}legend span{color:var(--cyan);font-family:ui-monospace,Consolas,monospace;margin-right:9px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}.wide{grid-column:1/-1}label{display:block;font-size:14px;font-weight:550}input:not([type=checkbox]),select,textarea{width:100%;margin-top:7px;padding:12px;border:1px solid #454e65;border-radius:9px;background:#111522;color:var(--ink);font:16px/1.45 system-ui,sans-serif}textarea{resize:vertical;min-height:90px}input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}input[type=checkbox]{accent-color:var(--cyan);width:21px;height:21px;margin:0;flex-shrink:0}.check{display:flex;align-items:center;gap:11px;padding:10px 0;font-size:15px;cursor:pointer}.hint{font-size:13px;color:var(--muted);margin:7px 0 0}.conditional[hidden]{display:none}.conditional{margin-top:12px}.output{position:sticky;top:20px;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px}.output h2{font-size:22px;margin:0 0 8px}.output p{margin:0 0 16px;color:var(--muted);font-size:14px}#prompt{min-height:440px;height:55vh;max-height:750px;font:14px/1.65 ui-monospace,Consolas,monospace;tab-size:2}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0}button{min-height:47px;padding:11px 16px;border:1px solid #4a536c;border-radius:10px;color:var(--ink);background:#252c40;font:600 14px system-ui,sans-serif;cursor:pointer}button.primary{background:var(--cyan);color:#142c27;border-color:var(--cyan)}button:hover{filter:brightness(1.1)}#feedback{min-height:26px;color:var(--cyan);font-size:13px;margin-top:12px}#count{font:12px ui-monospace,monospace;color:var(--muted)}.comparison{padding:16px 0 0;border-top:1px solid var(--line);margin-top:16px}.comparison strong{color:var(--pink);font-size:14px}.comparison p{margin:7px 0 0}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}.foot{color:var(--muted);font-size:12px;margin-top:20px}#storage{color:var(--muted);font-size:12px}.preset-note{font-size:13px;color:var(--muted);margin:0 0 22px}@media(max-width:820px){main{padding:26px 16px 36px}.layout{grid-template-columns:1fr}.output{position:static}#prompt{height:420px;min-height:320px}fieldset,.output{padding:17px}.fields{gap:13px}}@media(max-width:440px){.fields{grid-template-columns:1fr}.wide{grid-column:auto}.buttons button{flex:1}h1{font-size:31px}}
+</style>
+<script src="../assets/demo-nav.js" defer></script></head>
+<body><main>
+<header><div class="eyebrow">МАСТЕР-КЛАСС / ИГРОВЫЕ ПРОСТРАНСТВА</div><h1>Конструктор промпта</h1><p>Опишите 3D-локацию, скопируйте задание и отправьте его выбранной модели. Полученный HTML можно открыть в браузере или редакторе на телефоне.</p></header>
+<div class="toolbar"><button type="button" id="preset">Пример: научная станция</button><button type="button" id="jump">К готовому промпту ↓</button></div>
+<p class="preset-note">Для сравнения моделей используйте один и тот же текст. Для собственного проекта измените поля ниже.</p>
+<div class="layout"><form id="settings" autocomplete="off">
+<fieldset><legend><span>01</span>Мир и атмосфера</legend><div class="fields">
+<label class="wide">Название проекта<input name="title" maxlength="150" value="Исследовательская станция"></label>
+<label>Сеттинг<select name="setting"><option>Научная фантастика</option><option>Киберпанк</option><option>Космическая ретрофантастика</option><option>Современность</option><option>Фэнтези</option><option>Постапокалипсис</option><option>Свой вариант</option></select></label>
+<label>Атмосфера<select name="mood"><option>Таинственная, но спокойная</option><option>Уютная</option><option>Тревожная</option><option>Приключенческая</option><option>Торжественная</option></select></label>
+<label class="wide">Описание места<textarea name="world" rows="3" maxlength="2000">Небольшая исследовательская станция на неизвестной планете. Оборудование работает, но людей внутри нет.</textarea></label>
+<label class="wide">Предметы и детали<textarea name="props" rows="3" maxlength="2500">Кровать, рабочий стол, кресло, шкаф, окно с видом на инопланетный ландшафт. В лаборатории: терминал, прозрачная капсула с образцом и сигнальная лампа.</textarea></label>
+</div></fieldset>
+<fieldset><legend><span>02</span>Визуал и камера</legend><div class="fields">
+<label>Детализация<select name="detail"><option>Средняя, составные узнаваемые предметы</option><option>Минимальная, простая геометрия</option><option>Повышенная в пределах возможностей телефона</option></select></label>
+<label class="wide">Цвета<input name="colors" maxlength="350" value="Светлые поверхности, тёмный металл, бирюзовые и оранжевые акценты"></label>
+<label class="wide">Освещение<input name="lighting" maxlength="500" value="Мягкий общий свет, свет из окна и локальная подсветка оборудования. Интерьер хорошо различим на телефоне."></label>
+<label class="wide">Камера<select name="camera"><option value="fixed">От первого лица, игрок стоит на месте</option><option value="points">От первого лица, переходы между точками</option><option value="orbit">Обзор комнаты снаружи, вращение вокруг неё</option></select></label>
+</div></fieldset>
+<fieldset><legend><span>03</span>Действия и комнаты</legend>
+<label class="check"><input type="checkbox" name="interactive" checked>Предметы реагируют на касания</label>
+<div id="interactionFields" class="conditional"><label>Предмет, действие и результат<textarea name="actions" rows="5" maxlength="3500">Настольная лампа: касание включает или выключает свет.
+Шкаф: показывает сообщение «Скафандр на обслуживании».
+Терминал: открывает запись об исследовании образца.
+Капсула: переключает цвет образца между бирюзовым и оранжевым. Сигнальная лампа меняет цвет вместе с ним.</textarea></label><p class="hint">Лучше начать с двух-трёх действий. Укажите, что произойдёт при повторном касании.</p></div>
+<label class="check"><input type="checkbox" name="multi" checked>Несколько комнат</label>
+<div id="roomFields" class="conditional"><label>Комнаты, каждая с новой строки<textarea name="rooms" rows="3" maxlength="2000">Жилой отсек: кровать, рабочая зона и окно.
+Лаборатория: стол, терминал, капсула с образцом.</textarea></label><p class="hint">От двух до шести комнат. При выключении останется одна общая локация.</p>
+<label>Переход между комнатами<select name="transition"><option value="door">Касание двери</option><option value="button">Кнопка на экране</option><option value="point">Обозначенная точка перехода</option></select></label>
+<label class="check"><input type="checkbox" name="menu" checked>Меню выбора комнат</label>
+<label class="check"><input type="checkbox" name="keep" checked>Сохранять изменения при переходах</label></div>
+<label class="wide">Цель игрока<input name="goal" maxlength="600" value="Свободный осмотр станции и изучение оборудования"></label>
+</fieldset>
+<fieldset><legend><span>04</span>Условия запуска</legend><div class="fields">
+<label class="wide">Технология<select name="tech"><option value="cdn">Three.js через интернет (CDN)</option><option value="offline">Полностью автономно, WebGL без библиотек</option></select></label>
+<p class="hint wide" id="techHint">Проект останется одним HTML-файлом. Для загрузки Three.js потребуется интернет.</p>
+
+</div></fieldset><p id="storage">Настройки сохраняются в этом браузере, если локальное хранилище доступно.</p>
+</form>
+<section class="output" aria-labelledby="resultTitle"><h2 id="resultTitle">Готовое задание</h2><p>Текст обновляется при изменении полей. Скопируйте его целиком в новый чат.</p>
+<label for="prompt" class="hint">Промпт для модели</label><textarea id="prompt" readonly spellcheck="false"></textarea><span id="count"></span>
+<div class="buttons"><button type="button" class="primary" id="copy">Скопировать промпт</button><button type="button" id="download">Скачать .txt</button><button type="button" id="select">Выделить текст</button></div><div id="feedback" role="status" aria-live="polite"></div>
+<div class="comparison"><strong>Как сравнивать модели</strong><p>Новый чат, одинаковый промпт и устройство. Сначала сравните первый результат, затем отдельно учитывайте исправления: запуск, визуал, управление и работу механик.</p></div>
+</section></div><div class="foot">Генератор составляет текст и не вызывает ИИ. Введённые данные не отправляются на сервер. Модель для генерации кода вы выбираете самостоятельно.</div>
+</main>
+<script>
+'use strict';
+const form=document.querySelector('#settings'),output=document.querySelector('#prompt'),feedback=document.querySelector('#feedback');
+const fields=Array.from(form.elements).filter(e=>e.name),defaults={};
+for(const e of fields)defaults[e.name]=e.type==='checkbox'?e.checked:e.value;
+const KEY='workshop-3d-prompt-hub-v2';
+function read(){return Object.fromEntries(fields.map(e=>[e.name,e.type==='checkbox'?e.checked:e.value.trim()]))}
+function restore(data){for(const e of fields){if(!(e.name in data))continue;if(e.type==='checkbox'){if(typeof data[e.name]==='boolean')e.checked=data[e.name]}else if(typeof data[e.name]==='string'){if(e.tagName==='SELECT'){if([...e.options].some(o=>o.value===data[e.name]))e.value=data[e.name]}else e.value=data[e.name].slice(0,e.maxLength>0?e.maxLength:5000)}}}
+function buildPrompt(v){
+ const rooms=v.multi?v.rooms.split(/\n/).map(s=>s.trim()).filter(Boolean).slice(0,6):[];
+ const multiple=v.multi&&rooms.length>=2;
+ const camera={fixed:'Вид от первого лица. Игрок стоит в фиксированной точке каждой комнаты и может осматриваться на 360°.',points:'Вид от первого лица. В каждой комнате есть несколько свободных точек обзора. Игрок перемещается между ними касанием обозначенной точки. Добавь проверку доступности точки и плавный переход камеры.',orbit:'Обзор комнаты снаружи под углом. Камера вращается вокруг центра комнаты движением пальца. Сделай стены и потолок, закрывающие обзор, скрываемыми или полупрозрачными. Для этого режима допустим разрез помещения.'}[v.camera];
+ const transition={door:'Касание обозначенной двери',button:'Крупная экранная кнопка с названием соседней комнаты',point:'Касание обозначенной точки перехода'}[v.transition];
+ const sections=[`Создай интерактивную 3D-локацию «${v.title||'Моя локация'}» для смартфона как HTML-приложение.
+Сразу реализуй проект. Не задавай уточняющих вопросов. Неуказанные детали выбирай самостоятельно, отдавая предпочтение простому работающему решению.`,
+`1. СЕТТИНГ
+Сеттинг: ${v.setting}.
+Место и атмосфера: ${v.world||'Небольшое помещение, соответствующее сеттингу.'}
+Настроение: ${v.mood}.
+Предметы и детали: ${v.props||'Подбери несколько характерных предметов самостоятельно.'}`,
+`2. ВИЗУАЛ
+Детализация: ${v.detail}.
+Цвета: ${v.colors||'Согласованная палитра, соответствующая сеттингу.'}
+Освещение: ${v.lighting||'Мягкое освещение с хорошо различимыми предметами.'}
+Создай настоящее объёмное пространство. Предметы узнаваемы по силуэту, имеют правильные пропорции и не пересекаются без причины. Используй свет, затенение, толщину конструкций и составные формы.`,
+`3. КАМЕРА И УПРАВЛЕНИЕ
+${camera}
+Поворот камеры на телефоне — перетаскивание пальцем, на компьютере — перетаскивание мышью. Ограничь вертикальные углы, чтобы камера не переворачивалась. Поддержи портретную и альбомную ориентацию.
+Начальный вид показывает основное содержимое комнаты. Камера находится вне стен и мебели. ${v.camera==='orbit'?'Сохраняй удобную дистанцию до сцены.':'Помещения имеют пол, потолок и стены. Не допускай прохождения камеры сквозь мебель и стены.'}
+Не используй гироскоп, камеру телефона или AR.`,
+`4. ИНТЕРАКТИВНЫЕ ПРЕДМЕТЫ
+${v.interactive?`Предметы реагируют на касание. Реализуй следующие действия:
+${v.actions||'Настольная лампа включает и выключает свет. Шкаф показывает короткое описание.'}
+Обозначь доступные для взаимодействия предметы. Короткое касание активирует объект, перетаскивание для осмотра не вызывает действие. Предметы за непрозрачными препятствиями не реагируют. Для каждого действия покажи понятный результат. Если повторное действие не описано, используй логичное поведение: переключение для переключателей, однократное получение для наград.`:'Предметы являются декорациями. Не добавляй механику подбора, награды или действия по касанию. Управление камерой и навигация работают.'}`,
+`5. КОМНАТЫ И ПЕРЕХОДЫ
+${multiple?`Создай отдельные комнаты (${rooms.length}):
+${rooms.map((r,i)=>`${i+1}) ${r}`).join('\n')}
+Способ перехода: ${transition}. Если схема связей не указана, соедини соседние комнаты по порядку и обеспечь обратный переход. Название места назначения видно до перехода. При входе камера появляется в свободном месте и смотрит на содержимое комнаты.
+${v.keep?'Состояние предметов сохраняется при переходах между комнатами.':'При повторном входе в комнату её предметы возвращаются в исходное состояние.'}`:`Создай одну общую локацию. ${rooms.length===1?'Описание: '+rooms[0]:''} Переходы в другие комнаты не нужны.`}`,
+`6. МЕНЮ И ИНТЕРФЕЙС
+${multiple&&v.menu?'Добавь кнопку «Комнаты». По ней открывается меню всех комнат с названиями из списка. Выбор переносит в комнату. Меню можно закрыть без перехода.':'Меню выбора комнат не нужно.'}
+Интерфейс на русском языке. Показывай название текущей комнаты. Кнопки крупные, текст читаемый, интерфейс не закрывает основную часть сцены. При запуске покажи короткую подсказку по доступному управлению.
+Касания меню, кнопок и окон сообщений не должны управлять камерой или активировать объекты за интерфейсом. Окна сообщений можно закрывать.`,
+`7. ЦЕЛЬ И СОСТОЯНИЕ
+Цель игрока: ${v.goal||'Свободный осмотр локации.'}
+Если есть конкретная задача, понятно обозначь её выполнение, не добавляя неуказанные правила.
+Постоянное сохранение не требуется. После перезагрузки страницы начинается новая сессия.`,
+`8. ТЕХНИЧЕСКИЕ УСЛОВИЯ
+Результат — один index.html со встроенными CSS и JavaScript. Настоящее 3D через WebGL, без плоской имитации.
+${v.tech==='offline'?'Полностью автономный файл. Внешние библиотеки, CDN, импорты и любые сетевые запросы запрещены. Используй встроенный WebGL. После получения файл должен работать без интернета.':'Разрешена Three.js одной фиксированной версии через CDN. Укажи точную версию и согласованные ссылки модулей. Не используй ссылки на latest. Для загрузки библиотеки допустим интернет, но исходный проект должен остаться одним HTML-файлом.'}
+Не используй npm, сборщики, серверную логику и платные API. Не загружай внешние модели, изображения, текстуры, шрифты или звуки. Создавай геометрию и материалы кодом. Процедурные текстуры внутри файла разрешены.
+Учти производительность смартфона: ограничь плотность пикселей и сложность геометрии, переиспользуй ресурсы. Если WebGL недоступен${v.tech==='cdn'?' или библиотека не загрузилась':''}, покажи понятное сообщение вместо пустого экрана.`,
+`9. ФОРМАТ ОТВЕТА
+Подготовь готовый файл index.html и прикрепи его для скачивания. Дополнительно обязательно выведи полный итоговый HTML одним блоком кода, чтобы его можно было скопировать в TrebEdit, Koder или другой редактор. Файл и код должны содержать одну и ту же финальную версию. Если интерфейс не позволяет прикреплять файлы, прямо сообщи об этом и всё равно выведи полный код. Не сокращай код, не оставляй заглушек и TODO. Не заменяй функции инструкциями по самостоятельной реализации.
+Перед ответом проверь согласованность кода: инициализация, рендер, управление, обработка касаний${multiple?', переходы между комнатами':''}${v.interactive?', действия предметов':''} и состояние.
+После кода кратко укажи, как запустить файл, какие зависимости требуют интернета и какие проверки ты действительно выполнил. Не заявляй о запуске и тестировании, если не мог их выполнить.`];
+ return sections.join('\n\n');
+}
+function refresh(save=true){const v=read();document.querySelector('#interactionFields').hidden=!v.interactive;document.querySelector('#roomFields').hidden=!v.multi;document.querySelector('#techHint').textContent=v.tech==='offline'?'Генератор попросит один автономный файл без сетевых запросов. Реализация на чистом WebGL сложнее.':'Проект останется одним HTML-файлом. Для загрузки Three.js потребуется интернет.';output.value=buildPrompt(v);document.querySelector('#count').textContent=output.value.length.toLocaleString('ru-RU')+' символов';feedback.textContent='';if(save){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){document.querySelector('#storage').textContent='Хранилище недоступно. Настройки действуют до закрытия страницы.'}}}
+form.addEventListener('input',()=>refresh());form.addEventListener('change',()=>refresh());form.addEventListener('submit',e=>e.preventDefault());
+try{const saved=JSON.parse(localStorage.getItem(KEY)||'null');if(saved&&typeof saved==='object')restore(saved)}catch(e){}
+refresh(false);
+function selectText(){output.focus();output.select();output.setSelectionRange(0,output.value.length)}
+document.querySelector('#select').addEventListener('click',()=>{selectText();feedback.textContent='Текст выделен. Выберите «Копировать» в меню устройства.'});
+document.querySelector('#copy').addEventListener('click',async()=>{const value=output.value;try{if(!navigator.clipboard?.writeText)throw Error('Clipboard unavailable');await navigator.clipboard.writeText(value);feedback.textContent='Промпт скопирован. Вставьте его в новый чат.'}catch(e){selectText();let copied=false;try{copied=document.execCommand('copy')}catch(ignore){}feedback.textContent=copied?'Промпт скопирован. Вставьте его в новый чат.':'Текст выделен. Нажмите «Копировать» в меню устройства.'}});
+document.querySelector('#download').addEventListener('click',()=>{const blob=new Blob([output.value],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='prompt-3d.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);feedback.textContent='Файл с промптом подготовлен к скачиванию.'});
+document.querySelector('#preset').addEventListener('click',()=>{restore(defaults);refresh();feedback.textContent='Загружен исходный пример для сравнения моделей.'});
+document.querySelector('#jump').addEventListener('click',()=>{document.querySelector('.output').scrollIntoView({behavior:'smooth',block:'start'});output.focus({preventScroll:true})});
+</script></body></html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Современная комната · Изометрия</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eeeae3;color:#283b3a;font:15px system-ui,sans-serif}header{padding:24px 24px 0;position:absolute;pointer-events:none}small{letter-spacing:3px;font-size:10px;color:#687b76}h1{font-size:26px;font-weight:500;margin:8px 0}header p{font-size:13px;color:#697670;margin:0}canvas{display:block;width:100%;height:100svh;touch-action:none}footer{position:fixed;bottom:18px;left:18px;right:18px;display:flex;gap:10px;align-items:center;justify-content:space-between}#info{background:#ffffffdf;border:1px solid #fff;border-radius:18px;padding:12px 16px;max-width:390px;box-shadow:0 8px 32px #34433d0d;font-size:13px}button{background:#284c45;color:white;border:0;border-radius:50px;padding:14px 18px;font:inherit;cursor:pointer;white-space:nowrap}button:focus-visible{outline:3px solid #df9a4e} @media(max-width:450px){header{padding:20px}h1{font-size:23px}footer{bottom:14px;left:12px;right:12px}#info{font-size:12px}button{font-size:12px;padding:14px}}
+</style>
+<script src="../../assets/demo-nav.js" defer></script>
+</head>
+<body>
+<header><small>ИНТЕРАКТИВНЫЙ ПРОТОТИП / 01</small><h1>Комната с видом на день</h1><p>Коснитесь пола, чтобы пройти. Предметов — чтобы изучить.</p></header>
+<canvas id="scene" aria-label="Изометрическая комната. Управление касаниями или мышью."></canvas>
+<footer><div id="info" role="status">Светлая гостиная · выберите предмет</div><button id="light">Включить лампу</button></footer>
+<script>
+'use strict';
+// Все размеры в условных единицах комнаты. Никаких внешних ресурсов.
+const canvas=document.querySelector('#scene'),ctx=canvas.getContext('2d');
+const info=document.querySelector('#info');
+let W,H,S,ox,oy,lit=false,last=0,hits=[];
+const player={x:3.65,y:4.55}, route=[];
+const furniture=[
+ {id:'sofa',x:.35,y:1.35,w:1.35,d:2.65,label:'Диван',text:'Мягкий диван с подушками цвета шалфея.'},
+ {id:'shelf',x:3.8,y:.15,w:1.8,d:.55,label:'Консоль',text:'Книги, керамика и небольшой постер над консолью.'},
+ {id:'table',x:2.15,y:2.65,w:1.4,d:1.05,label:'Журнальный стол',text:'На столе лежат журнал и чашка кофе.'},
+ {id:'plant',x:.5,y:.35,w:.55,d:.55,label:'Растение',text:'Монстера у окна. Полив по четвергам.'},
+ {id:'lamp',x:1.9,y:.55,w:.4,d:.4,label:'Торшер',text:'Коснитесь кнопки внизу, чтобы включить тёплый свет.'}
+];
+function p(x,y,z=0){return [ox+(x-y)*S,oy+(x+y)*S*.5-z*S]}
+function poly(points,color,stroke){ctx.beginPath();points.forEach((q,i)=>{const a=p(...q);i?ctx.lineTo(...a):ctx.moveTo(...a)});ctx.closePath();ctx.fillStyle=color;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
+function line(a,b,color,width=1){ctx.beginPath();ctx.moveTo(...p(...a));ctx.lineTo(...p(...b));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
+function box(x,y,w,d,z,h,top,left,right){poly([[x,y+d,z],[x+w,y+d,z],[x+w,y+d,z+h],[x,y+d,z+h]],left);poly([[x+w,y,z],[x+w,y+d,z],[x+w,y+d,z+h],[x+w,y,z+h]],right);poly([[x,y,z+h],[x+w,y,z+h],[x+w,y+d,z+h],[x,y+d,z+h]],top)}
+function ellipse(x,y,z,rx,ry,color){const a=p(x,y,z);ctx.beginPath();ctx.ellipse(a[0],a[1],rx*S,ry*S,0,0,Math.PI*2);ctx.fillStyle=color;ctx.fill()}
+function drawItem(f){const {x,y,w,d}=f;
+ if(f.id==='sofa'){
+ box(x,y,w,d,.13,.42,'#91aba1','#69887e','#54786e');
+ box(x,y,.26,d,.45,.65,'#bed0c4','#8eaa9d','#79988b');
+ for(let i=0;i<3;i++)box(x+.27,y+.15+i*.79,.96,.73,.54,.15,'#b7cbbf','#93b0a0','#7f9e8e');
+ for(const yy of [y,y+d-.2])box(x,yy,w,.2,.45,.4,'#b6c9bc','#8aa797','#789788');
+ box(x+.3,y+.35,.22,.5,.72,.35,'#e7d4b0','#d0b88d','#bea77d');
+ }else if(f.id==='table'){
+ for(const xx of [x+.12,x+w-.2])for(const yy of [y+.12,y+d-.2])box(xx,yy,.09,.09,.02,.44,'#8e7154','#755b43','#624a36');
+ box(x,y,w,d,.44,.13,'#bd946d','#a77a54','#936b49');
+ box(x+.23,y+.23,.53,.4,.57,.025,'#ede7d6','#ccc4b0','#bdb49f');
+ box(x+.28,y+.25,.42,.05,.597,.005,'#76968e','#76968e','#76968e');
+ ellipse(x+1.06,y+.62,.58,.16,.08,'#f3ece0');box(x+.97,y+.53,.16,.16,.58,.14,'#f3ece0','#d9d1bf','#c5bca9');ellipse(x+1.05,y+.61,.725,.07,.035,'#73533c');
+ }else if(f.id==='shelf'){
+ box(x,y,w,d,.08,.66,'#d0ac83','#b38b62','#9c754f');
+ for(let i=1;i<3;i++)line([x+w*i/3,y+d,.13],[x+w*i/3,y+d,.69],'#96704d');
+ for(let i=0;i<5;i++)box(x+.16+i*.12,y+.13,.08,.26,.74,.22+(i%3)*.06,['#5f807a','#d9cab0','#ac7559'][i%3],'#81948a','#48645f');
+ ellipse(x+1.4,y+.28,.76,.14,.07,'#b57d61');box(x+1.3,y+.18,.19,.19,.74,.23,'#c9997e','#b57d61','#956249');
+ }else if(f.id==='plant'){
+ box(x,y,w,d,0,.48,'#d4b59a','#bc9676','#a67c5e');
+ for(let i=0;i<7;i++){const angle=i*2.4,xx=x+.27+Math.cos(angle)*.38,yy=y+.27+Math.sin(angle)*.38,z=.95+(i%3)*.2;line([x+.27,y+.27,.42],[xx,yy,z],'#527d57',2);ellipse(xx,yy,z,.22,.10,i%2?'#5c8c68':'#769e72')}
+ }else if(f.id==='lamp'){
+ ellipse(x+.2,y+.2,.02,.26,.13,'#475853');line([x+.2,y+.2,0],[x+.2,y+.2,1.8],'#53605a',3);
+ box(x-.12,y-.12,.64,.64,1.6,.38,lit?'#fff1bf':'#e8dec8',lit?'#f6d897':'#d2c7ad',lit?'#e9bd73':'#c5b99d');
+ }
+}
+function person(){const {x,y}=player;ellipse(x,y,.015,.2,.1,'#3e514a35');line([x-.09,y,.12],[x-.09,y,.42],'#354754',S*.075);line([x+.09,y,.12],[x+.09,y,.42],'#354754',S*.075);box(x-.13,y-.12,.26,.24,.38,.4,'#dc9b76','#c17c5b','#a7664a');ellipse(x,y,.97,.14,.15,'#d9b599');ellipse(x,y,1.07,.145,.07,'#51423c')}
+function render(){ctx.clearRect(0,0,W,H);hits=[];
+ // Основание и две открытые стены.
+ box(0,0,6,6,-.2,.2,'#d6c1a5','#c5b296','#b39f84');
+ poly([[0,0,0],[0,6,0],[0,6,2.65],[0,0,2.65]],'#e2e5dc');
+ poly([[0,0,0],[6,0,0],[6,0,2.65],[0,0,2.65]],'#f7f5ed');
+ // Окно на левой стене.
+ poly([[0,1.15,1.05],[0,3.9,1.05],[0,3.9,2.25],[0,1.15,2.25]],'#fdfcf6');
+ poly([[.01,1.27,1.17],[.01,3.78,1.17],[.01,3.78,2.13],[.01,1.27,2.13]],'#b9d7db');
+ line([.02,2.52,1.12],[.02,2.52,2.19],'#fdfcf6',5);line([.02,1.2,1.65],[.02,3.85,1.65],'#fdfcf6',4);
+ // Пол, доски и ковёр.
+ for(let i=1;i<12;i++)line([i*.5,0,.005],[i*.5,6,.005],'#b39b7b55');
+ for(let i=0;i<12;i++)for(let j=0;j<3;j++){const yy=j*2+(i%2);if(yy<6)line([i*.5,yy,.006],[(i+1)*.5,yy,.006],'#b39b7b40')}
+ poly([[1.75,1.65,.01],[4.6,1.65,.01],[4.6,4.65,.01],[1.75,4.65,.01]],'#eee6d6');
+ for(let i=0;i<12;i++)line([1.85,1.8+i*.24,.014],[4.5,1.8+i*.24,.014],'#d3cbb950');
+ poly([[.15,1.3,.02],[2.4,2.45,.02],[2.4,4.7,.02],[.15,3.8,.02]],'#fff6cc30');
+ // Постер над консолью.
+ poly([[4.15,.01,1.1],[5.35,.01,1.1],[5.35,.01,2.25],[4.15,.01,2.25]],'#8e755c');
+ poly([[4.23,.02,1.18],[5.27,.02,1.18],[5.27,.02,2.17],[4.23,.02,2.17]],'#e8d9c4');
+ poly([[4.3,.025,1.25],[5.19,.025,1.25],[5.19,.025,1.65],[4.75,.025,1.93]],'#6d8c7f');
+ if(lit)ellipse(2.1,.75,.025,1,.46,'#ffdc8138');
+ const layers=furniture.map(f=>({depth:f.x+f.y+(f.w+f.d)/2,draw:()=>drawItem(f)}));layers.push({depth:player.x+player.y,draw:person});layers.sort((a,b)=>a.depth-b.depth).forEach(a=>a.draw());
+ // Экранные области предметов, в обратном порядке глубины при выборе.
+ furniture.forEach(f=>{const pts=[[f.x,f.y],[f.x+f.w,f.y],[f.x+f.w,f.y+f.d],[f.x,f.y+f.d]].map(a=>p(...a));hits.push({f,minX:Math.min(...pts.map(a=>a[0]))-8,maxX:Math.max(...pts.map(a=>a[0]))+8,minY:Math.min(...pts.map(a=>a[1]))-S*(f.id==='lamp'?2:f.id==='plant'?1.4:1),maxY:Math.max(...pts.map(a=>a[1]))})});
+ if(route.length){const a=route[route.length-1];ellipse(a.x,a.y,.03,.13,.065,'#557d7980')}
+}
+function resize(){W=innerWidth;H=innerHeight;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);S=Math.min((W-28)/12,(H-220)/9);S=Math.max(12,S);ox=W/2;oy=120+2.65*S;render()}
+function blocked(x,y){return furniture.some(f=>x>f.x-.16&&x<f.x+f.w+.16&&y>f.y-.16&&y<f.y+f.d+.16)}
+// Поиск маршрута по сетке: персонаж обходит мебель.
+function pathTo(tx,ty){const n=30,step=6/n,key=(x,y)=>x+','+y;const sx=Math.floor(player.x/step),sy=Math.floor(player.y/step),ex=Math.min(n-1,Math.max(0,Math.floor(tx/step))),ey=Math.min(n-1,Math.max(0,Math.floor(ty/step)));const queue=[[sx,sy]],seen=new Map([[key(sx,sy),null]]);let found=false;
+ for(let i=0;i<queue.length;i++){const [x,y]=queue[i];if(x===ex&&y===ey){found=true;break}for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=x+dx,b=y+dy,k=key(a,b);if(a<0||b<0||a>=n||b>=n||seen.has(k)||blocked((a+.5)*step,(b+.5)*step))continue;seen.set(k,[x,y]);queue.push([a,b])}}
+ if(!found){info.textContent='Здесь стоит мебель. Выберите свободное место на полу.';return}route.length=0;let cur=[ex,ey];while(cur){route.unshift({x:(cur[0]+.5)*step,y:(cur[1]+.5)*step});cur=seen.get(key(...cur))}info.textContent='Прогулка по комнате';
+}
+canvas.addEventListener('pointerdown',e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const hit=hits.filter(h=>x>=h.minX&&x<=h.maxX&&y>=h.minY&&y<=h.maxY).sort((a,b)=>(b.f.x+b.f.y)-(a.f.x+a.f.y))[0];if(hit){info.textContent=hit.f.label+' · '+hit.f.text;return}const dx=(x-ox)/S,dy=(y-oy)/(S*.5),wx=(dx+dy)/2,wy=(dy-dx)/2;if(wx>=0&&wy>=0&&wx<6&&wy<6)pathTo(wx,wy)});
+document.querySelector('#light').addEventListener('click',()=>{lit=!lit;document.querySelector('#light').textContent=lit?'Выключить лампу':'Включить лампу';info.textContent=lit?'Торшер включён · тёплый свет':'Торшер выключен'});
+function tick(t){const dt=Math.min((t-last)/1000,.05);last=t;if(route.length){const target=route[0],dx=target.x-player.x,dy=target.y-player.y,d=Math.hypot(dx,dy),move=dt*2.3;if(d<=move){player.x=target.x;player.y=target.y;route.shift()}else{player.x+=dx/d*move;player.y+=dy/d*move}}render();requestAnimationFrame(tick)}
+addEventListener('resize',resize);resize();requestAnimationFrame(tick);
+</script>
+</body>
+</html>

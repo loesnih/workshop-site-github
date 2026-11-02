@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#11272e">
+<title>ТИХИЙ ГОРИЗОНТ · Исследовательская станция</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#11272e;color:#edf8f7;font-family:system-ui,-apple-system,Segoe UI,sans-serif}button{font:inherit;color:inherit;cursor:pointer;min-height:46px;border:1px solid #68868b66;background:#18323bee;border-radius:14px;padding:10px 16px}button:hover{background:#284852}button:focus-visible{outline:3px solid #8af5df;outline-offset:3px}button:disabled{opacity:.45;cursor:default}#view{position:fixed;inset:0}canvas{display:block;touch-action:none}header{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(16px + env(safe-area-inset-top)) 18px 24px;background:linear-gradient(#10252ee8,transparent);pointer-events:none;z-index:3}header button{pointer-events:auto}.eyebrow{font-size:10px;letter-spacing:.2em;color:#93dace;margin-bottom:5px}h1{font-size:clamp(17px,4.5vw,25px);font-weight:550;margin:0}#tags{position:fixed;inset:0;pointer-events:none;z-index:2}.tag{position:absolute;left:0;top:0;transform:translate(-50%,-50%);pointer-events:auto;white-space:nowrap;font-size:12px;padding:8px 12px;border-color:#8ce5d6aa;background:#13353ee8;box-shadow:0 4px 18px #071b2940}.tag.nav{border-radius:50%;width:46px;padding:0;color:#a4ffec;font-size:22px}.tag[hidden]{display:none}footer{position:fixed;bottom:0;left:0;right:0;padding:22px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#10252ee8);display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none;z-index:3}footer button{pointer-events:auto;width:46px;padding:0}#status{font-size:12px;color:#cae6e5;max-width:75%}#status b{display:block;color:#98efdc;font-size:10px;letter-spacing:.14em;margin-bottom:4px}#toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#102d36f5;border:1px solid #74cbbb88;border-radius:14px;padding:12px 18px;width:max-content;max-width:90vw;text-align:center;font-size:14px;pointer-events:none;z-index:7;opacity:0;transition:opacity .2s}#toast.show{opacity:1}#veil{position:fixed;inset:0;background:#10252e;opacity:0;pointer-events:none;z-index:4;transition:opacity .22s}#veil.on{opacity:1}#modal{position:fixed;inset:0;background:#071821a8;backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:8}#modal[hidden]{display:none}.card{width:100%;max-width:440px;background:#18313a;border:1px solid #729a9a55;border-radius:24px;padding:26px;max-height:85dvh;overflow:auto;box-shadow:0 24px 90px #0006}.card h2{font-size:25px;margin:12px 0}.card p{color:#c1d7d8;line-height:1.65;font-size:15px;white-space:pre-line}.actions{display:grid;gap:10px;margin-top:22px}.primary{background:#9ae8d4;color:#123137;border:0;font-weight:650}.primary:hover{background:#c1ffef}.subtle{background:transparent}.danger{color:#ffd0ae}#boot{position:fixed;inset:0;z-index:10;background:#11272e;display:grid;place-items:center;padding:26px;text-align:center}#boot div{max-width:420px}#boot p{line-height:1.7;color:#bad4d7}#boot[hidden]{display:none}@media(max-height:480px){header{padding-top:8px}footer{padding-bottom:8px}.card{padding:18px}.card h2{margin:6px 0}.card p{font-size:13px}.actions{margin-top:12px}}
+</style>
+<script src="../../assets/demo-nav.js" defer></script>
+</head>
+<body>
+<main id="view" aria-label="Трёхмерная исследовательская станция"></main>
+<header><div><div class="eyebrow">ТИХИЙ ГОРИЗОНТ / СТАНЦИЯ 07</div><h1 id="roomName">Жилой отсек</h1></div><button id="rooms">Комнаты</button></header>
+<div id="tags"></div>
+<footer><div id="status"><b>СВОБОДНОЕ ИССЛЕДОВАНИЕ</b><span id="saveStatus">Перетащите для осмотра · ⌾ — перейти</span></div><button id="help" aria-label="Управление и справка">?</button></footer>
+<div id="toast" role="status" aria-live="polite"></div><div id="veil"></div>
+<div id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="card"><div class="eyebrow">СТАНЦИЯ 07 / БОРТОВАЯ СИСТЕМА</div><h2 id="modalTitle"></h2><p id="modalText"></p><div class="actions" id="actions"></div></div></div>
+<div id="boot"><div><div class="eyebrow">СВЯЗЬ СО СТАНЦИЕЙ</div><h2 id="bootTitle">Исследовательская станция</h2><p id="bootText">Загружаем 3D-модуль…</p><button id="retry" hidden>Повторить загрузку</button></div></div>
+<script type="module">
+// Единственная внешняя зависимость: Three.js 0.160.1. Дополнительных модулей нет.
+const $ = id => document.getElementById(id);
+const fail = message => { $('boot').hidden=false; $('bootTitle').textContent='Не удалось открыть станцию'; $('bootText').textContent=message; $('retry').hidden=false; };
+$('retry').onclick=()=>location.reload();
+let THREE;
+try {
+  THREE=await Promise.race([
+    import('../../assets/vendor/three-0.160.1.module.js'),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),18000))
+  ]);
+} catch(error) { fail('Библиотека 3D не загрузилась. Проверьте интернет и доступ к cdn.jsdelivr.net, затем повторите загрузку.'); }
+if(THREE) { try { start(); } catch(error) { console.error(error); fail('Не удалось запустить WebGL. Попробуйте современный браузер с включённым аппаратным ускорением.'); } }
+function start(){
+  const KEY='quiet-horizon-station-v1';
+  const defaults=()=>({room:0,node:0,lamp:true,orange:false,read:false,locker:false,intro:false});
+  let state=defaults(),storageOK=true;
+  try { const saved=JSON.parse(localStorage.getItem(KEY)||'null'); if(saved&&typeof saved==='object'){
+    for(const k of ['lamp','orange','read','locker','intro']) if(typeof saved[k]==='boolean')state[k]=saved[k];
+    if(saved.room===0||saved.room===1)state.room=saved.room;
+    if(Number.isInteger(saved.node)&&saved.node>=0&&saved.node<4)state.node=saved.node;
+  }}catch(e){storageOK=false;}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){storageOK=false;} $('saveStatus').textContent=storageOK?'Перетащите для осмотра · ⌾ — перейти':'Хранилище недоступно · состояние сохранится только до закрытия';}
+  const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'low-power'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+  $('view').appendChild(renderer.domElement);
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();fail('Графический контекст потерян. Нажмите «Повторить загрузку», чтобы восстановить станцию.');});
+  const camera=new THREE.PerspectiveCamera(70,1,.06,90);camera.rotation.order='YXZ';
+  const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),v=new THREE.Vector3();
+  const names=['Жилой отсек','Лаборатория'];
+  const nodes=[[[0,2.7],[0,.5],[-1,1.5],[1.35,1.5]],[[0,2.7],[0,.3],[-1.65,1.1],[1.65,1.1]]];
+  const rooms=[],materials=new Map(),unitBox=new THREE.BoxGeometry(1,1,1);
+  let current=0,yaw=0,pitch=-.08,motion=null,busy=false,drag=null,lastTag=0,toastTimer,returnFocus;
+  const metal=0x243d47,white=0xc8d4cf,teal=0x64ddc9,orange=0xffa15d;
+  function material(color,glow=false){const key=color+':'+glow;if(!materials.has(key))materials.set(key,new THREE.MeshStandardMaterial({color,roughness:.75,metalness:glow?.05:.16,emissive:glow?color:0,emissiveIntensity:glow?.65:0}));return materials.get(key);}
+  function box(r,w,h,d,x,y,z,color=white,id){const m=new THREE.Mesh(unitBox,material(color));m.scale.set(w,h,d);m.position.set(x,y,z);m.userData.id=id;r.scene.add(m);r.pick.push(m);return m;}
+  function cylinder(r,rt,rb,h,x,y,z,color,id){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,16),material(color));m.position.set(x,y,z);m.userData.id=id;r.scene.add(m);r.pick.push(m);return m;}
+  function glow(m,color){m.material=material(color,true);return m;}
+  function solid(r,x,z,w,d){r.obstacles.push({minX:x-w/2-.25,maxX:x+w/2+.25,minZ:z-d/2-.25,maxZ:z+d/2+.25});}
+  function tag(r,text,x,y,z,id,action,nav=false){
+    const el=document.createElement('button');el.className='tag'+(nav?' nav':'');el.textContent=text;el.setAttribute('aria-label',nav?'Перейти к точке обзора':text);el.hidden=true;$('tags').appendChild(el);
+    const t={el,pos:new THREE.Vector3(x,y,z),id,action,nav};r.tags.push(t);
+    el.onclick=()=>{if(!busy&&!motion&&$('modal').hidden&&visible(t)){action();}};
+  }
+  function table(r,x,z,w,d,id){box(r,w,.13,d,x,.83,z,white,id);for(const dx of [-w/2+.12,w/2-.12])for(const dz of [-d/2+.12,d/2-.12])box(r,.09,.77,.09,x+dx,.385,z+dz,metal,id);solid(r,x,z,w,d);}
+  function shell(index){
+    const r={scene:new THREE.Scene(),pick:[],tags:[],obstacles:[],actions:{}};r.scene.background=new THREE.Color(0x718f9c);
+    r.scene.add(new THREE.HemisphereLight(0xe2fff6,0x6a747d,2.2));
+    const light=new THREE.DirectionalLight(0xffecd3,2.2);light.position.set(-3,5,-4);r.scene.add(light);
+    box(r,8,.22,8,0,-.11,0,0x738989);box(r,8,.2,8,0,3.3,0,0xc2cecd);
+    box(r,.22,3.3,8,-4,1.65,0);box(r,.22,3.3,8,4,1.65,0);box(r,8,3.3,.22,0,1.65,4);
+    // Настоящий проём окна в дальней стене.
+    box(r,8,.85,.22,0,.425,-4);box(r,8,.55,.22,0,3.025,-4);
+    box(r,1.4,1.9,.22,-3.3,1.8,-4);box(r,1.4,1.9,.22,3.3,1.8,-4);
+    for(const x of [-2.63,2.63])box(r,.1,1.95,.32,x,1.8,-3.94,metal);
+    for(const y of [.85,2.75])box(r,5.35,.1,.35,0,y,-3.94,metal);
+    box(r,.08,1.9,.15,0,1.8,-3.95,metal);
+    for(let x=-3;x<=3;x+=1.5)box(r,.018,.005,7.8,x,.006,0,0x92a5a2);
+    for(let z=-3;z<=3;z+=1.5)box(r,7.8,.005,.018,0,.008,z,0x92a5a2);
+    for(const x of [-3.88,3.88])glow(box(r,.025,.045,7.6,x,.15,0,teal),teal);
+    for(const x of [-2.8,2.8])glow(box(r,.22,.025,4.8,x,3.18,0,0xdbfff2),0xdbfff2);
+    // Геометрический инопланетный пейзаж за окном.
+    box(r,70,.2,42,0,-.55,-25,0x627e87);
+    for(let i=0;i<15;i++){
+      const h=2+(i*7%6),m=new THREE.Mesh(new THREE.ConeGeometry(2+(i%3),h,5),material(i%2?0x6d8498:0x829eaa));
+      m.position.set((i-7)*3,-.45+h/2,-13-(i%4)*4);m.rotation.y=i;r.scene.add(m);
+    }
+    const moon=new THREE.Mesh(new THREE.IcosahedronGeometry(1.4,1),material(0xf5ceb0,true));moon.position.set(9,7,-29);r.scene.add(moon);
+    // Герметичная дверь: переход выполняется через затемнение, без пролёта сквозь стену.
+    box(r,1.55,2.6,.18,2.9,1.3,3.77,metal,'door');
+    box(r,1.29,2.33,.06,2.9,1.24,3.65,0x597374,'door');
+    glow(box(r,.045,2.2,.025,2.9,1.24,3.60,teal,'door'),teal);
+    box(r,.18,.27,.12,2.35,1.2,3.57,orange,'door');
+    r.actions.door=()=>enter(1-index);tag(r,'→ '+names[1-index],2.9,2.5,3.51,'door',r.actions.door);
+    nodes[index].forEach(([x,z],n)=>{
+      const ring=new THREE.Mesh(new THREE.RingGeometry(.18,.235,28),new THREE.MeshBasicMaterial({color:teal,side:THREE.DoubleSide}));
+      ring.rotation.x=-Math.PI/2;ring.position.set(x,.025,z);ring.userData.id='node'+n;r.scene.add(ring);r.pick.push(ring);
+      r.actions['node'+n]=()=>move(n);tag(r,'⌾',x,.12,z,'node'+n,r.actions['node'+n],true);
+    });
+    return r;
+  }
+  const home=shell(0);rooms.push(home);
+  // Кровать, матрас, подушка и одеяло.
+  box(home,1.6,.32,2.45,-2.7,.26,-1.65,metal);box(home,1.53,.22,2.35,-2.7,.53,-1.65,0xe4e6d9);
+  box(home,1.58,.8,.13,-2.7,.62,-2.92,metal);box(home,1.56,.08,1.4,-2.7,.68,-1.23,0x4e9997);box(home,1.13,.15,.5,-2.7,.7,-2.45,0xf3eee0);solid(home,-2.7,-1.65,1.65,2.65);
+  table(home,2.6,-2.25,2,1.12);
+  box(home,.58,.035,.4,2.1,.925,-2.15,metal);box(home,.52,.018,.34,2.1,.951,-2.15,0xe2d5bc);
+  cylinder(home,.19,.23,.07,3.13,.94,-2.3,metal,'lamp');cylinder(home,.035,.035,.49,3.13,1.21,-2.3,metal,'lamp');
+  const shade=cylinder(home,.12,.3,.24,3.13,1.55,-2.3,teal,'lamp');
+  const lampLight=new THREE.PointLight(0xffda9b,2.3,3,2);lampLight.position.set(3.13,1.37,-2.3);home.scene.add(lampLight);
+  home.actions.lamp=()=>{state.lamp=!state.lamp;sync();save();toast(state.lamp?'Настольная лампа включена':'Настольная лампа выключена');};
+  tag(home,'◉ Лампа',3.13,1.9,-2.25,'lamp',home.actions.lamp);
+  // Кресло с сиденьем, спинкой, подлокотниками и основанием.
+  box(home,.73,.17,.65,2.4,.53,-.95,0x39535d);box(home,.73,.7,.12,2.4,.94,-.62,0x39535d);
+  cylinder(home,.07,.07,.4,2.4,.23,-.95,metal);box(home,.8,.07,.65,2.4,.065,-.95,metal);
+  for(const x of [1.98,2.82])box(home,.09,.11,.6,x,.8,-.95,metal);solid(home,2.4,-.95,.95,.8);
+  box(home,1.2,2.3,.72,-3.12,1.15,2.25,metal,'locker');box(home,1.08,2.1,.05,-3.12,1.15,2.64,white,'locker');
+  box(home,.025,1.95,.025,-3.12,1.15,2.68,metal,'locker');box(home,.06,.36,.08,-2.91,1.18,2.72,orange,'locker');solid(home,-3.12,2.25,1.2,.85);
+  home.actions.locker=()=>{state.locker=true;save();dialog('Шкаф экипажа','Скафандр на обслуживании\n\nАвтоматическая диагностика гермошвов продолжается.');};
+  tag(home,'◇ Шкаф',-3.12,2.64,2.7,'locker',home.actions.locker);
+  const lab=shell(1);rooms.push(lab);
+  table(lab,0,-2.2,4.7,1.3);
+  box(lab,.64,.07,.43,-1.4,.94,-2.13,metal,'terminal');box(lab,.09,.3,.09,-1.4,1.1,-2.33,metal,'terminal');
+  box(lab,1.1,.72,.13,-1.4,1.5,-2.33,metal,'terminal');glow(box(lab,.95,.57,.02,-1.4,1.5,-2.25,0x285d62,'terminal'),0x285d62);
+  for(let i=0;i<4;i++)glow(box(lab,.62-i*.09,.025,.013,-1.48,1.66-i*.1,-2.232,teal,'terminal'),teal);
+  home.scene.updateMatrixWorld(true);
+  lab.actions.terminal=()=>{state.read=true;save();dialog('Образец А–17 / запись 04','Место обнаружения: восточная гряда.\n\nКристаллическая структура реагирует на спектр света. Бирюзовое свечение — устойчивое состояние; оранжевое — ответ на возбуждение. Температура остаётся постоянной.\n\nКоснитесь капсулы, чтобы переключить режим наблюдения. Сигнальная лампа повторяет цвет образца.\n\nЭкипаж отправился к следующей точке отбора. Станция работает автономно.');};
+  tag(lab,'▤ Терминал',-1.4,2.08,-2.18,'terminal',lab.actions.terminal);
+  cylinder(lab,.57,.62,.15,1.1,.98,-2.18,metal,'capsule');cylinder(lab,.57,.57,.12,1.1,2.28,-2.18,metal,'capsule');
+  const glass=new THREE.Mesh(new THREE.CylinderGeometry(.51,.51,1.18,20,1,true),new THREE.MeshStandardMaterial({color:0xadf5ec,transparent:true,opacity:.14,roughness:.12,metalness:.05,side:THREE.DoubleSide,depthWrite:false}));
+  glass.position.set(1.1,1.62,-2.18);glass.userData.id='capsule';glass.userData.transparent=true;lab.scene.add(glass);lab.pick.push(glass);
+  for(const x of [.63,1.57])cylinder(lab,.025,.025,1.22,x,1.63,-2.18,metal,'capsule');
+  const sample=new THREE.Mesh(new THREE.IcosahedronGeometry(.3,0),material(teal,true));sample.scale.set(.8,1.6,.8);sample.position.set(1.1,1.6,-2.18);sample.userData.id='capsule';lab.scene.add(sample);lab.pick.push(sample);
+  const signal=cylinder(lab,.13,.13,.26,2.03,1.12,-2.25,teal,'capsule');
+  const sampleLight=new THREE.PointLight(teal,1.2,2.7,2);sampleLight.position.set(1.1,1.75,-1.9);lab.scene.add(sampleLight);
+  lab.actions.capsule=()=>{state.orange=!state.orange;sync();save();toast(state.orange?'Образец и сигнал: оранжевый режим':'Образец и сигнал: бирюзовый режим');};
+  tag(lab,'◈ Капсула',1.1,2.58,-2.1,'capsule',lab.actions.capsule);
+  for(const x of [-3.35,3.35]){box(lab,.85,.96,1.1,x,.48,-.6,metal);box(lab,.9,.08,1.15,x,1,-.6,white);solid(lab,x,-.6,.9,1.15);for(let i=0;i<3;i++)box(lab,.63,.02,.025,x,.28+i*.25,0,0x99aaa6);}
+  function sync(){shade.material=material(state.lamp?0xffd7a1:0x637d80,state.lamp);lampLight.visible=state.lamp;const c=state.orange?orange:teal;sample.material=material(c,true);signal.material=material(c,true);sampleLight.color.setHex(c);}
+  function free(x,z,r=rooms[current]){return Math.abs(x)<3.65&&Math.abs(z)<3.65&&!r.obstacles.some(b=>x>=b.minX&&x<=b.maxX&&z>=b.minZ&&z<=b.maxZ);}
+  function clearPath(a,b,r=rooms[current]){const count=Math.ceil(a.distanceTo(b)/.06);for(let i=0;i<=count;i++){const t=count?i/count:0;if(!free(a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t,r))return false;}return true;}
+  function move(n){if(motion||busy)return;const [x,z]=nodes[current][n],end=new THREE.Vector3(x,1.58,z);if(!clearPath(camera.position,end)){toast('Путь закрыт мебелью. Выберите другую точку.');return;}motion={start:camera.position.clone(),end,time:performance.now(),duration:Math.max(500,camera.position.distanceTo(end)*380),node:n};drag=null;}
+  function setRoom(index,node=0){current=index;state.room=index;state.node=node;const [x,z]=nodes[index][node];camera.position.set(x,1.58,z);yaw=0;pitch=-.08;camera.rotation.set(pitch,yaw,0);$('roomName').textContent=names[index];rooms.forEach(r=>r.tags.forEach(t=>t.el.hidden=true));rooms[index].scene.updateMatrixWorld(true);save();}
+  async function enter(index){if(busy)return;closeDialog();busy=true;motion=null;drag=null;$('veil').classList.add('on');await new Promise(r=>setTimeout(r,230));setRoom(index);$('veil').classList.remove('on');await new Promise(r=>setTimeout(r,230));busy=false;toast(names[index]);}
+  function visible(t){
+    if(busy||motion||!$('modal').hidden)return false;
+    const direction=t.pos.clone().sub(camera.position),distance=direction.length();
+    if(t.nav&&(distance<1.7||!clearPath(camera.position,new THREE.Vector3(t.pos.x,1.58,t.pos.z))))return false;
+    ray.set(camera.position,direction.normalize());
+    const hit=ray.intersectObjects(rooms[current].pick,false).find(h=>!h.object.userData.transparent);
+    return !hit||hit.distance>=distance-.13||hit.object.userData.id===t.id;
+  }
+  function updateTags(){camera.updateMatrixWorld();const w=innerWidth,h=innerHeight;for(const t of rooms[current].tags){v.copy(t.pos).project(camera);const x=(v.x*.5+.5)*w,y=(-v.y*.5+.5)*h;const show=v.z>-1&&v.z<1&&x>30&&x<w-30&&y>95&&y<h-75&&visible(t);t.el.hidden=!show;if(show)t.el.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%)`;}}
+  function tap(x,y){pointer.set(x/innerWidth*2-1,-y/innerHeight*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(rooms[current].pick,false);const hit=hits.find(h=>!h.object.userData.transparent||h.object.userData.id==='capsule');if(hit){const action=rooms[current].actions[hit.object.userData.id];if(action)action();}}
+  const canvas=renderer.domElement;
+  canvas.addEventListener('pointerdown',e=>{if(e.button!==0||busy||motion||!$('modal').hidden||drag)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false,time:performance.now()};canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.lastX,dy=e.clientY-drag.lastY;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){yaw-=dx*.0045;pitch=Math.max(-1.05,Math.min(1.05,pitch-dy*.0045));}drag.lastX=e.clientX;drag.lastY=e.clientY;});
+  canvas.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(!d.moved&&performance.now()-d.time<550&&!busy&&!motion&&$('modal').hidden)tap(e.clientX,e.clientY);});
+  for(const event of ['pointercancel','lostpointercapture'])canvas.addEventListener(event,()=>drag=null);
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  function toast(text){clearTimeout(toastTimer);$('toast').textContent=text;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3000);}
+  function closeDialog(){$('modal').hidden=true;returnFocus?.focus();}
+  function dialog(title,text,buttons){drag=null;returnFocus=document.activeElement;$('modalTitle').textContent=title;$('modalText').textContent=text;$('actions').replaceChildren();
+    const list=buttons||[{text:'Понятно',fn:closeDialog,primary:true}];for(const item of list){const b=document.createElement('button');b.textContent=item.text;b.className=item.primary?'primary':item.danger?'danger subtle':'subtle';b.onclick=item.fn;$('actions').appendChild(b);}$('modal').hidden=false;$('actions').firstElementChild.focus();}
+  function help(){dialog('Здесь всё спокойно','Осмотритесь: проведите пальцем или перетащите мышью.\n\n⌾ — свободная точка обзора. Коснитесь её для плавного перемещения.\n\nПодписи отмечают оборудование и двери. Короткое касание включает действие. Название на двери указывает соседнюю комнату.\n\nЦель — свободно изучить станцию. Прогресс сохраняется автоматически, если браузер разрешает хранение.',[{text:'Начать осмотр',primary:true,fn:()=>{state.intro=true;save();closeDialog();}}]);}
+  $('help').onclick=help;
+  $('rooms').onclick=()=>dialog('Комнаты','Перейдите в другой отсек или продолжите осмотр.',[
+    ...names.map((name,i)=>({text:(current===i?'● ':'○ ')+name,fn:()=>enter(i)})),
+    {text:'Закрыть',primary:true,fn:closeDialog},
+    {text:'Сбросить прогресс',danger:true,fn:()=>dialog('Сбросить прогресс?','Состояние оборудования и прочитанных записей будет сброшено.',[{text:'Отмена',primary:true,fn:closeDialog},{text:'Сбросить',danger:true,fn:()=>{state=defaults();state.intro=true;sync();save();enter(0);}}])}
+  ]);
+  $('modal').addEventListener('pointerdown',e=>e.stopPropagation());
+  document.addEventListener('keydown',e=>{if($('modal').hidden)return;if(e.key==='Escape'){closeDialog();}if(e.key==='Tab'){const a=[...$('actions').querySelectorAll('button')],first=a[0],last=a[a.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+  function resize(){renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.fov=camera.aspect<1?78:65;camera.updateProjectionMatrix();lastTag=0;}
+  addEventListener('resize',resize);resize();sync();setRoom(state.room,state.node);$('boot').hidden=true;
+  if(!state.intro)help();
+  // Проверка свободных стартов и связности точек при инициализации.
+  for(let i=0;i<rooms.length;i++){for(const [x,z] of nodes[i]){if(!free(x,z,rooms[i]))throw Error('Точка обзора занята');}const seen=new Set([0]);for(let pass=0;pass<4;pass++)for(const a of [...seen])for(let b=0;b<4;b++){const p=nodes[i][a],q=nodes[i][b];if(clearPath(new THREE.Vector3(p[0],1.58,p[1]),new THREE.Vector3(q[0],1.58,q[1]),rooms[i]))seen.add(b);}if(seen.size!==4)throw Error('Недоступная точка обзора');}
+  renderer.setAnimationLoop(time=>{
+    if(motion){const t=Math.min(1,(time-motion.time)/motion.duration),e=t*t*(3-2*t);camera.position.lerpVectors(motion.start,motion.end,e);if(t===1){state.node=motion.node;motion=null;save();}}
+    camera.rotation.set(pitch,yaw,0);sample.rotation.y=time*.0003;
+    if(time-lastTag>80){updateTags();lastTag=time;}
+    renderer.render(rooms[current].scene,camera);
+  });
+}
+</script>
+</body>
+</html>
