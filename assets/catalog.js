@@ -22,14 +22,14 @@ window.WORKSHOP_DEMOS = [
   },
   {
     "id": "echo",
-    "title": "Станция «Эхо»",
+    "title": "Станция. 6 Astra - High",
     "description": "Жилой отсек и лаборатория в светлом интерьере.",
     "group": "Локации",
     "path": "demos/echo/index.html"
   },
   {
     "id": "research",
-    "title": "Станция «Тихая орбита»",
+    "title": "Станция.6.1 Sol - High",
     "description": "Исходная версия исследовательской станции.",
     "group": "Локации",
     "path": "demos/research/index.html"
