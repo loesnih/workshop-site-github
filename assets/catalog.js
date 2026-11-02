@@ -15,7 +15,7 @@ window.WORKSHOP_DEMOS = [
   },
   {
     "id": "sol-light",
-    "title": "Станция: Sol Light",
+    "title": "Станция. 6.1 Sol - Light",
     "description": "Исследовательская станция с интерактивными предметами.",
     "group": "Локации",
     "path": "demos/sol-light/index.html"
@@ -50,7 +50,7 @@ window.WORKSHOP_DEMOS = [
   },
   {
     "id": "horizon",
-    "title": "Станция «Тихий горизонт»",
+    "title": "Станция. 6 Astra - Light »",
     "description": "Существующая самостоятельная версия станции.",
     "group": "Локации",
     "path": "demos/horizon/index.html"
